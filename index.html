@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tennis Model — Daily Predictions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #0a0a0f;
+    --bg2:        #111118;
+    --bg3:        #18181f;
+    --border:     #2a2a35;
+    --border2:    #353545;
+    --text:       #e8e8f0;
+    --muted:      #6b6b80;
+    --accent:     #c8f060;
+    --accent2:    #60d0f0;
+    --accent3:    #f06090;
+    --warn:       #f0b040;
+    --atp:        #60d0f0;
+    --wta:        #f060a0;
+    --hard:       #4080f0;
+    --clay:       #e07040;
+    --grass:      #50c060;
+    --carpet:     #9060d0;
+    --radius:     6px;
+    --font-head:  'Bebas Neue', sans-serif;
+    --font-body:  'DM Sans', sans-serif;
+    --font-mono:  'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID TEXTURE ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.18;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 40px 0 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .logo-block { display: flex; align-items: center; gap: 16px; }
+
+  .logo-icon {
+    width: 48px; height: 48px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 0 24px rgba(200,240,96,0.3);
+  }
+
+  h1 {
+    font-family: var(--font-head);
+    font-size: clamp(28px, 5vw, 48px);
+    letter-spacing: 2px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  h1 span { color: var(--accent); }
+
+  .header-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .header-meta strong { color: var(--accent2); }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .toolbar-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: 4px;
+  }
+
+  .pill {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .pill:hover { border-color: var(--accent); color: var(--accent); }
+  .pill.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 500; }
+
+  .search-box {
+    margin-left: auto;
+    padding: 6px 14px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    width: 200px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-box:focus { border-color: var(--accent2); }
+  .search-box::placeholder { color: var(--muted); }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--border2); }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-line, var(--accent));
+  }
+
+  .stat-val {
+    font-family: var(--font-head);
+    font-size: 32px;
+    letter-spacing: 1px;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ── MATCH CARDS ── */
+  #match-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
+    gap: 16px;
+  }
+
+  .match-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+    animation: fadeUp 0.4s ease both;
+  }
+  .match-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-1px);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* staggered animation */
+  .match-card:nth-child(1)  { animation-delay: 0.05s; }
+  .match-card:nth-child(2)  { animation-delay: 0.10s; }
+  .match-card:nth-child(3)  { animation-delay: 0.15s; }
+  .match-card:nth-child(4)  { animation-delay: 0.20s; }
+  .match-card:nth-child(5)  { animation-delay: 0.25s; }
+  .match-card:nth-child(6)  { animation-delay: 0.30s; }
+  .match-card:nth-child(7)  { animation-delay: 0.35s; }
+  .match-card:nth-child(8)  { animation-delay: 0.40s; }
+
+  /* ── CARD HEADER ── */
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tournament-name {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    flex: 1;
+  }
+
+  .tags { display: flex; gap: 6px; flex-shrink: 0; }
+
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .tag-atp   { background: rgba(96,208,240,0.15);  color: var(--atp);   border: 1px solid rgba(96,208,240,0.3);  }
+  .tag-wta   { background: rgba(240,96,160,0.15);  color: var(--wta);   border: 1px solid rgba(240,96,160,0.3);  }
+  .tag-hard  { background: rgba(64,128,240,0.15);  color: var(--hard);  border: 1px solid rgba(64,128,240,0.3);  }
+  .tag-clay  { background: rgba(224,112,64,0.15);  color: var(--clay);  border: 1px solid rgba(224,112,64,0.3);  }
+  .tag-grass { background: rgba(80,192,96,0.15);   color: var(--grass); border: 1px solid rgba(80,192,96,0.3);   }
+
+  .warn-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: rgba(240,176,64,0.15);
+    color: var(--warn);
+    border: 1px solid rgba(240,176,64,0.3);
+  }
+
+  /* ── PLAYERS ── */
+  .players {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .player-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .player-name {
+    font-size: 15px;
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .player-name.favourite { color: var(--accent); }
+
+  .prob-bar-wrap {
+    flex: 2;
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 80px;
+  }
+
+  .prob-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .bar-a { background: var(--accent); }
+  .bar-b { background: var(--border2); }
+
+  .prob-pct {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    width: 42px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .prob-pct.high { color: var(--accent); }
+  .prob-pct.low  { color: var(--muted);  }
+
+  .odds-val {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .elo-delta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    width: 60px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ── MARKETS ── */
+  .markets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--border);
+  }
+
+  .market {
+    padding: 12px 14px;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+  .market:last-child { border-right: none; }
+
+  .market-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .market-value {
+    font-family: var(--font-head);
+    font-size: 22px;
+    letter-spacing: 0.5px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .market-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    margin-top: 3px;
+  }
+
+  .rec-over  { color: var(--accent);  }
+  .rec-under { color: var(--accent3); }
+  .rec-high  { color: var(--warn);    }
+  .rec-low   { color: var(--accent2); }
+
+  /* ── HANDICAP VISUAL ── */
+  .hc-bar-wrap {
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+
+  .hc-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* ── ELO DIFF NOTE ── */
+  .elo-note {
+    padding: 8px 16px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .elo-note span { color: var(--text); }
+
+  /* ── VALUE PICKS ── */
+  #value-picks {
+    display: none;
+    margin-bottom: 28px;
+  }
+
+  .value-picks-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .value-picks-title {
+    font-family: var(--font-head);
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+
+  .value-picks-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .picks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+  }
+
+  .pick-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.3s ease both;
+    cursor: default;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .pick-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+
+  .pick-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--pick-color, var(--accent));
+  }
+
+  .pick-card::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 3px;
+    background: var(--pick-color, var(--accent));
+    opacity: 0.4;
+  }
+
+  .pick-type {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--pick-color, var(--accent));
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pick-type::before {
+    content: '★';
+    font-size: 8px;
+  }
+
+  .pick-player {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pick-match {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pick-stats {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .pick-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .pick-stat-val {
+    font-family: var(--font-head);
+    font-size: 20px;
+    letter-spacing: 0.5px;
+    color: var(--pick-color, var(--accent));
+    line-height: 1;
+  }
+
+  .pick-stat-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .pick-reasoning {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .pick-reasoning strong { color: var(--text); }
+
+  .confidence-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--pick-color, var(--accent));
+    margin-right: 2px;
+    box-shadow: 0 0 4px var(--pick-color, var(--accent));
+  }
+
+  /* ── NO RESULTS ── */
+  #no-results {
+    display: none;
+    text-align: center;
+    padding: 80px 0;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  /* ── FILE UPLOAD ── */
+  .upload-zone {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 32px;
+    text-align: center;
+    margin-bottom: 28px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg2);
+    display: none;
+  }
+  .upload-zone.visible { display: block; }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(200,240,96,0.04); }
+
+  .upload-zone p {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
+  .upload-icon { font-size: 32px; margin-bottom: 8px; }
+
+  .upload-btn {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 8px 20px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .upload-btn:hover { background: var(--accent); color: var(--bg); }
+
+  #file-input { display: none; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 20px 0;
+    margin-top: 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  footer span {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* ── EDGE BADGE ── */
+  .edge-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .edge-pos  { background: rgba(200,240,96,0.15); color: var(--accent);  border: 1px solid rgba(200,240,96,0.3); }
+  .edge-neg  { background: rgba(240,96,144,0.15); color: var(--accent3); border: 1px solid rgba(240,96,144,0.3); }
+  .edge-neu  { background: rgba(107,107,128,0.15); color: var(--muted);  border: 1px solid rgba(107,107,128,0.2); }
+
+  .odds-row {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .odds-item {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .odds-item strong { color: var(--text); font-size: 12px; }
+  .odds-item .book  { color: var(--muted); font-size: 9px; margin-left: 3px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    #match-grid { grid-template-columns: 1fr; }
+    .markets { grid-template-columns: repeat(2, 1fr); }
+    .market:nth-child(2) { border-right: none; }
+    .market:nth-child(3) { border-top: 1px solid var(--border); grid-column: span 2; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-block">
+      <div class="logo-icon">🎾</div>
+      <div>
+        <h1>TENNIS <span>MODEL</span></h1>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:2px;">DAILY PREDICTION ENGINE</div>
+      </div>
+    </div>
+    <div class="header-meta" id="header-meta" style="display:flex;align-items:center;gap:12px;">
+      <div style="text-align:right">
+        <strong id="date-display">—</strong><br>
+        <span id="header-sub">Demo data loaded</span>
+      </div>
+      <button class="upload-btn" onclick="document.getElementById('file-input').click()" style="flex-shrink:0;padding:8px 16px;font-size:11px;">
+        📂 Load CSV
+      </button>
+      <input type="file" id="file-input" accept=".csv">
+    </div>
+  </header>
+
+  <!-- UPLOAD ZONE (hidden - using header button instead) -->
+  <div class="upload-zone" id="upload-zone" style="display:none"></div>
+
+  <!-- STATS BAR -->
+  <div class="stats-bar" id="stats-bar" style="display:none">
+    <div class="stat-card" style="--accent-line:var(--accent)">
+      <div class="stat-val" id="stat-matches">0</div>
+      <div class="stat-label">Matches Today</div>
+    </div>
+    <div class="stat-card" style="--accent-line:var(--atp)">
+      <div class="stat-val" id="stat-atp">0</div>
+      <div class="stat-label">ATP Matches</div>
+    </div>
+    <div class="stat-card" style="--accent-line:var(--wta)">
+      <div class="stat-val" id="stat-wta">0</div>
+      <div class="stat-label">WTA Matches</div>
+    </div>
+    <div class="stat-card" style="--accent-line:var(--accent2)">
+      <div class="stat-val" id="stat-avg-total">—</div>
+      <div class="stat-label">Avg Total Games</div>
+    </div>
+    <div class="stat-card" style="--accent-line:var(--accent3)">
+      <div class="stat-val" id="stat-avg-breaks">—</div>
+      <div class="stat-label">Avg Breaks/Set</div>
+    </div>
+    <div class="stat-card" style="--accent-line:var(--warn)">
+      <div class="stat-val" id="stat-confidence">—</div>
+      <div class="stat-label">Top Confidence</div>
+    </div>
+  </div>
+
+  <!-- VALUE PICKS -->
+  <div id="value-picks">
+    <div class="value-picks-header">
+      <div>
+        <div class="value-picks-title">★ VALUE PICKS</div>
+        <div class="value-picks-sub">High confidence model selections for today</div>
+      </div>
+    </div>
+    <div class="picks-grid" id="picks-grid"></div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar" id="toolbar" style="display:none">
+    <span class="toolbar-label">Tour</span>
+    <button class="pill active" data-filter="tour" data-val="all">All</button>
+    <button class="pill" data-filter="tour" data-val="ATP">ATP</button>
+    <button class="pill" data-filter="tour" data-val="WTA">WTA</button>
+
+    <span class="toolbar-label" style="margin-left:8px">Surface</span>
+    <button class="pill active" data-filter="surface" data-val="all">All</button>
+    <button class="pill" data-filter="surface" data-val="Hard">Hard</button>
+    <button class="pill" data-filter="surface" data-val="Clay">Clay</button>
+    <button class="pill" data-filter="surface" data-val="Grass">Grass</button>
+
+    <span class="toolbar-label" style="margin-left:8px">Sort</span>
+    <button class="pill active" data-sort="confidence">Confidence</button>
+    <button class="pill" data-sort="total">Total Games</button>
+    <button class="pill" data-sort="breaks">Breaks</button>
+
+    <input class="search-box" id="search" placeholder="Search player..." type="text">
+  </div>
+
+  <!-- MATCH GRID -->
+  <div id="match-grid"></div>
+  <div id="no-results">No matches found</div>
+
+  <footer>
+    <span>TENNIS MODEL v1.0 — Walk-forward XGBoost + Surface Elo</span>
+    <span id="footer-date"></span>
+  </footer>
+
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let allMatches = [];
+let filters = { tour: 'all', surface: 'all' };
+let sortBy = 'confidence';
+let searchQ = '';
+
+// ── CSV PARSER ─────────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+  return lines.slice(1).map(line => {
+    // Handle quoted commas
+    const vals = [];
+    let cur = '', inQ = false;
+    for (let c of line) {
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    vals.push(cur.trim());
+    const obj = {};
+    headers.forEach((h, i) => {
+      const v = (vals[i] || '').replace(/"/g,'').trim();
+      obj[h] = isNaN(v) || v === '' ? v : parseFloat(v);
+    });
+    return obj;
+  }).filter(r => r.player_a);
+}
+
+// ── LOAD CSV ───────────────────────────────────────────────────────────────────
+function loadCSV(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    allMatches = parseCSV(e.target.result);
+    document.getElementById('upload-zone').classList.remove('visible');
+    document.getElementById('stats-bar').style.display = '';
+    document.getElementById('toolbar').style.display = '';
+    updateStats();
+    render();
+
+    // Date from filename or data
+    const dateStr = allMatches[0]?.date || file.name.match(/\d{4}-\d{2}-\d{2}/)?.[0] || '';
+    if (dateStr) {
+      const d = new Date(dateStr);
+      document.getElementById('date-display').textContent =
+        d.toLocaleDateString('en-AU', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    }
+    document.getElementById('footer-date').textContent =
+      `${allMatches.length} matches loaded`;
+    document.getElementById('header-sub').textContent =
+      `${allMatches.length} matches · ${allMatches.filter(m=>m.tour==='ATP').length} ATP · ${allMatches.filter(m=>m.tour==='WTA').length} WTA`;
+  };
+  reader.readAsText(file);
+}
+
+// ── DEMO DATA ──────────────────────────────────────────────────────────────────
+function loadDemo() {
+  allMatches = [
+    { date:'2026-06-08', tournament:'ATP Hertogenbosch', tour:'ATP', surface:'Grass',
+      player_a:'Ugo Humbert', player_b:'Elias Ymer',
+      prob_a:0.693, prob_b:0.307, elo_prob_a:0.772,
+      implied_odds_a:1.44, implied_odds_b:3.26,
+      pred_total_games:26.4, suggested_total_line:24.5, total_recommendation:'OVER',
+      pred_game_diff:5.8, pred_game_diff_b:-5.8,
+      pred_breaks_per_set:1.68, breaks_vs_avg:-0.12,
+      found_a:true, found_b:true },
+    { date:'2026-06-08', tournament:'ATP Hertogenbosch', tour:'ATP', surface:'Grass',
+      player_a:'Gabriel Diallo', player_b:'Adrian Mannarino',
+      prob_a:0.508, prob_b:0.492, elo_prob_a:0.474,
+      implied_odds_a:1.97, implied_odds_b:2.03,
+      pred_total_games:34.7, suggested_total_line:33.5, total_recommendation:'OVER',
+      pred_game_diff:4.2, pred_game_diff_b:-4.2,
+      pred_breaks_per_set:1.46, breaks_vs_avg:-0.34,
+      found_a:true, found_b:true },
+    { date:'2026-06-08', tournament:'WTA Queens', tour:'WTA', surface:'Grass',
+      player_a:'Katie Boutler', player_b:'Leylah Fernandez',
+      prob_a:0.402, prob_b:0.598, elo_prob_a:0.413,
+      implied_odds_a:2.49, implied_odds_b:1.67,
+      pred_total_games:16.4, suggested_total_line:18.5, total_recommendation:'UNDER',
+      pred_game_diff:3.6, pred_game_diff_b:-3.6,
+      pred_breaks_per_set:1.14, breaks_vs_avg:-1.06,
+      found_a:false, found_b:true },
+    { date:'2026-06-08', tournament:'WTA Queens', tour:'WTA', surface:'Grass',
+      player_a:'Iva Jovic', player_b:'Antonia Ruzic',
+      prob_a:0.613, prob_b:0.387, elo_prob_a:0.471,
+      implied_odds_a:1.63, implied_odds_b:2.59,
+      pred_total_games:24.5, suggested_total_line:22.5, total_recommendation:'OVER',
+      pred_game_diff:4.6, pred_game_diff_b:-4.6,
+      pred_breaks_per_set:3.03, breaks_vs_avg:0.83,
+      found_a:true, found_b:true },
+    { date:'2026-06-08', tournament:'ATP Stuttgart', tour:'ATP', surface:'Clay',
+      player_a:'Alejandro Davidovich Fokina', player_b:'Mattia Bellucci',
+      prob_a:0.542, prob_b:0.458, elo_prob_a:0.558,
+      implied_odds_a:1.84, implied_odds_b:2.18,
+      pred_total_games:28.1, suggested_total_line:27.5, total_recommendation:'OVER',
+      pred_game_diff:3.1, pred_game_diff_b:-3.1,
+      pred_breaks_per_set:2.41, breaks_vs_avg:0.61,
+      found_a:true, found_b:true },
+    { date:'2026-06-08', tournament:'WTA S-Hertogenbosch', tour:'WTA', surface:'Grass',
+      player_a:'Magda Linette', player_b:'Kimberly Birrell',
+      prob_a:0.467, prob_b:0.533, elo_prob_a:0.481,
+      implied_odds_a:2.14, implied_odds_b:1.88,
+      odds_a_best:2.10, odds_b_best:1.85, odds_a_pinnacle:2.08, odds_b_pinnacle:1.84,
+      h2h_book:'pinnacle', total_line:21.5, impl_prob_a:0.451, impl_prob_b:0.549,
+      edge_a:0.016, edge_b:-0.016,
+      pred_total_games:21.8, suggested_total_line:21.5, total_recommendation:'OVER',
+      pred_game_diff:2.4, pred_game_diff_b:-2.4,
+      pred_breaks_per_set:1.92, breaks_vs_avg:-0.28,
+      found_a:true, found_b:true },
+    { date:'2026-06-08', tournament:'ATP Hertogenbosch', tour:'ATP', surface:'Grass',
+      player_a:'Ugo Humbert', player_b:'Elias Ymer',
+      prob_a:0.693, prob_b:0.307, elo_prob_a:0.772,
+      implied_odds_a:1.44, implied_odds_b:3.26,
+      odds_a_best:1.52, odds_b_best:2.90, odds_a_pinnacle:1.50, odds_b_pinnacle:2.85,
+      h2h_book:'pinnacle', total_line:24.5, impl_prob_a:0.638, impl_prob_b:0.362,
+      edge_a:0.055, edge_b:-0.055,
+      pred_total_games:26.4, suggested_total_line:24.5, total_recommendation:'OVER',
+      pred_game_diff:5.8, pred_game_diff_b:-5.8,
+      pred_breaks_per_set:1.68, breaks_vs_avg:-0.12,
+      found_a:true, found_b:true },
+  ];
+
+  document.getElementById('upload-zone').classList.remove('visible');
+  document.getElementById('stats-bar').style.display = '';
+  document.getElementById('toolbar').style.display = '';
+  updateStats();
+  render();
+
+  const d = new Date('2026-06-08');
+  const dateStr = d.toLocaleDateString('en-AU', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  document.getElementById('header-meta').innerHTML =
+    `<strong>${dateStr}</strong><br>${allMatches.length} matches · ${allMatches.filter(m=>m.tour==='ATP').length} ATP · ${allMatches.filter(m=>m.tour==='WTA').length} WTA`;
+}
+
+// ── STATS ──────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const n = allMatches.length;
+  const atp = allMatches.filter(m => m.tour === 'ATP').length;
+  const wta = allMatches.filter(m => m.tour === 'WTA').length;
+  const totals = allMatches.map(m => m.pred_total_games).filter(v => v > 0);
+  const breaks = allMatches.map(m => m.pred_breaks_per_set).filter(v => v > 0);
+  const probs  = allMatches.map(m => Math.max(m.prob_a||0, m.prob_b||0));
+  const topConf = probs.length ? Math.max(...probs) : 0;
+
+  document.getElementById('stat-matches').textContent = n;
+  document.getElementById('stat-atp').textContent = atp;
+  document.getElementById('stat-wta').textContent = wta;
+  document.getElementById('stat-avg-total').textContent =
+    totals.length ? (totals.reduce((a,b)=>a+b,0)/totals.length).toFixed(1) : '—';
+  document.getElementById('stat-avg-breaks').textContent =
+    breaks.length ? (breaks.reduce((a,b)=>a+b,0)/breaks.length).toFixed(2) : '—';
+  document.getElementById('stat-confidence').textContent =
+    topConf ? (topConf*100).toFixed(0)+'%' : '—';
+}
+
+// ── VALUE PICKS LOGIC ─────────────────────────────────────────────────────────
+function buildValuePicks(data) {
+  const picks = [];
+
+  data.forEach(m => {
+    const pa = m.player_a || '';
+    const pb = m.player_b || '';
+    const tour = m.tour || 'ATP';
+
+    // ── MONEYLINE PICKS ────────────────────────────────────────────────────────
+    // Criteria: model prob >= 65% AND (edge >= 4% OR model vs elo divergence >= 8%)
+    const probA = m.prob_a || 0;
+    const probB = m.prob_b || 0;
+    const eloA  = m.elo_prob_a || probA;
+    const eloDivA = (probA - eloA) * 100;
+    const eloDivB = (probB - (1-eloA)) * 100;
+    const edgeA = (m.edge_a || 0) * 100;
+    const edgeB = (m.edge_b || 0) * 100;
+
+    // Check player A moneyline
+    if (probA >= 0.65 && (edgeA >= 4 || Math.abs(eloDivA) >= 8)) {
+      const confidence = Math.round(probA * 100);
+      const oddsVal = m.odds_a_best ? m.odds_a_best.toFixed(2) : null;
+      picks.push({
+        type: 'Moneyline',
+        color: 'var(--accent)',
+        player: pa,
+        match: `vs ${pb}`,
+        tournament: m.tournament,
+        surface: m.surface,
+        tour,
+        stats: [
+          { val: confidence + '%', label: 'Model Prob' },
+          oddsVal ? { val: oddsVal, label: 'Best Odds' } : null,
+          { val: (eloDivA >= 0 ? '+' : '') + eloDivA.toFixed(1) + '%', label: 'vs Elo' },
+          edgeA ? { val: (edgeA >= 0 ? '+' : '') + edgeA.toFixed(1) + '%', label: 'Market Edge' } : null,
+        ].filter(Boolean),
+        reasoning: buildMoneylineReasoning(m, pa, probA, eloA, edgeA),
+        score: probA * 100 + Math.abs(eloDivA) + Math.abs(edgeA),
+      });
+    }
+
+    // Check player B moneyline
+    if (probB >= 0.65 && (edgeB >= 4 || Math.abs(eloDivB) >= 8)) {
+      const confidence = Math.round(probB * 100);
+      const oddsVal = m.odds_b_best ? m.odds_b_best.toFixed(2) : null;
+      picks.push({
+        type: 'Moneyline',
+        color: 'var(--accent)',
+        player: pb,
+        match: `vs ${pa}`,
+        tournament: m.tournament,
+        surface: m.surface,
+        tour,
+        stats: [
+          { val: confidence + '%', label: 'Model Prob' },
+          oddsVal ? { val: oddsVal, label: 'Best Odds' } : null,
+          { val: (eloDivB >= 0 ? '+' : '') + eloDivB.toFixed(1) + '%', label: 'vs Elo' },
+          edgeB ? { val: (edgeB >= 0 ? '+' : '') + edgeB.toFixed(1) + '%', label: 'Market Edge' } : null,
+        ].filter(Boolean),
+        reasoning: buildMoneylineReasoning(m, pb, probB, 1-eloA, edgeB),
+        score: probB * 100 + Math.abs(eloDivB) + Math.abs(edgeB),
+      });
+    }
+
+    // ── TOTALS PICKS ───────────────────────────────────────────────────────────
+    // Criteria: predicted total is >= 3 games away from the line
+    const predTotal = m.pred_total_games;
+    // Use whichever line gives the bigger gap — bookmaker line takes priority
+    const bookLine  = m.total_line;
+    const modelLine = m.suggested_total_line;
+    const totalLine = (bookLine && predTotal)
+      ? (modelLine && Math.abs(predTotal - modelLine) > Math.abs(predTotal - bookLine)
+          ? modelLine : bookLine)
+      : (modelLine || bookLine);
+    const totalRec = predTotal && totalLine
+      ? (predTotal > totalLine ? 'OVER' : 'UNDER')
+      : (m.total_recommendation || '').toUpperCase();
+    if (predTotal && totalLine && Math.abs(predTotal - totalLine) >= 3) {
+      const gap = (predTotal - totalLine).toFixed(1);
+      picks.push({
+        type: totalRec === 'OVER' ? 'Total Games — Over' : 'Total Games — Under',
+        color: totalRec === 'OVER' ? 'var(--accent2)' : 'var(--accent3)',
+        player: `${totalRec} ${totalLine}`,
+        match: `${pa} vs ${pb}`,
+        tournament: m.tournament,
+        surface: m.surface,
+        tour,
+        stats: [
+          { val: predTotal.toFixed(1), label: 'Predicted' },
+          { val: totalLine, label: 'Line' },
+          { val: (parseFloat(gap) > 0 ? '+' : '') + gap, label: 'Gap' },
+          m.pred_breaks_per_set ? { val: m.pred_breaks_per_set.toFixed(2), label: 'Breaks/Set' } : null,
+        ].filter(Boolean),
+        reasoning: buildTotalsReasoning(m, pa, pb, predTotal, totalLine, totalRec),
+        score: Math.abs(predTotal - totalLine) * 10,
+      });
+    }
+
+    // ── BREAK OF SERVE PICKS ───────────────────────────────────────────────────
+    // Criteria: total breaks >= 1 game away from suggested line, or strongly vs avg
+    const breaksTotal = m.pred_breaks_total;
+    const totalBvsAvg = m.breaks_total_vs_avg;
+    const avgTotal = m.avg_breaks_total;
+    const breaksLine = m.suggested_breaks_line;
+    const breaksRec = m.breaks_recommendation;
+
+    if (breaksTotal && Math.abs(totalBvsAvg || 0) >= 1.0) {
+      const direction = totalBvsAvg > 0 ? 'High Break' : 'Low Break';
+      const col = totalBvsAvg > 0 ? 'var(--warn)' : 'var(--accent2)';
+      picks.push({
+        type: `Break of Serve — ${direction}`,
+        color: col,
+        player: breaksLine ? `${breaksRec} ${breaksLine}` : `${breaksTotal.toFixed(1)} breaks`,
+        match: `${pa} vs ${pb}`,
+        tournament: m.tournament,
+        surface: m.surface,
+        tour,
+        stats: [
+          { val: breaksTotal.toFixed(1), label: 'Pred Total Breaks' },
+          { val: avgTotal ? avgTotal.toFixed(1) : '—', label: 'Tour Avg' },
+          { val: (totalBvsAvg > 0 ? '+' : '') + totalBvsAvg.toFixed(1), label: 'vs Average' },
+        ],
+        reasoning: buildBreakReasoning(m, pa, pb, breaksTotal, totalBvsAvg, tour, avgTotal),
+        score: Math.abs(totalBvsAvg) * 15,
+      });
+    }
+  });
+
+  // Sort by score descending, take top 6
+  return picks.sort((a, b) => b.score - a.score).slice(0, 6);
+}
+
+function buildMoneylineReasoning(m, player, prob, eloProb, edge) {
+  const parts = [];
+  const div = ((prob - eloProb) * 100).toFixed(1);
+  if (Math.abs(div) >= 8) {
+    parts.push(`Model is <strong>${Math.abs(div)}% ${div > 0 ? 'above' : 'below'}</strong> Elo — form & serve stats driving the call`);
+  }
+  if (Math.abs(edge) >= 4) {
+    parts.push(`<strong>${edge > 0 ? '+' : ''}${edge.toFixed(1)}% edge</strong> over implied market probability`);
+  }
+  if (prob >= 0.80) parts.push(`<strong>High confidence</strong> selection at ${Math.round(prob*100)}%`);
+  return parts.join(' · ') || 'Strong model conviction on this selection';
+}
+
+function buildTotalsReasoning(m, pa, pb, pred, line, rec) {
+  const gap = Math.abs(pred - line).toFixed(1);
+  const parts = [`Model predicts <strong>${pred.toFixed(1)} games</strong>, line is ${line} — gap of <strong>${gap} games</strong>`];
+  if (m.w_serve_dominance && m.l_serve_dominance) {
+    const avgServe = ((m.w_serve_dominance + m.l_serve_dominance) / 2 * 100).toFixed(0);
+    parts.push(`Avg serve dominance ${avgServe}% — ${avgServe > 61 ? 'strong serving expected' : 'returners in control'}`);
+  }
+  if (m.pred_breaks_per_set) {
+    parts.push(`${m.pred_breaks_per_set.toFixed(2)} breaks/set predicted`);
+  }
+  return parts.join(' · ');
+}
+
+function buildBreakReasoning(m, pa, pb, breaksTotal, totalBvsAvg, tour, avgTotal) {
+  const direction = totalBvsAvg > 0 ? 'above' : 'below';
+  const avg = avgTotal || (tour === 'WTA' ? 4.4 : 3.6);
+  const parts = [`<strong>${Math.abs(totalBvsAvg).toFixed(1)} total breaks ${direction}</strong> tour average of ${avg.toFixed(1)}`];
+  if (m.surface === 'Clay') parts.push('Clay surface amplifies break tendencies');
+  if (m.surface === 'Grass') parts.push('Unusual for grass — check serve stats');
+  if (m.w_bp_save_pct && m.l_bp_save_pct) {
+    const avgSave = ((m.w_bp_save_pct + m.l_bp_save_pct) / 2 * 100).toFixed(0);
+    parts.push(`Avg BP save rate ${avgSave}%`);
+  }
+  return parts.join(' · ');
+}
+
+function renderValuePicks(data) {
+  const picks = buildValuePicks(data);
+  const section = document.getElementById('value-picks');
+  const grid    = document.getElementById('picks-grid');
+
+  if (!picks.length) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  grid.innerHTML = picks.map((p, i) => `
+    <div class="pick-card" style="--pick-color:${p.color};animation-delay:${i*0.06}s">
+      <div class="pick-type">${p.type} · ${p.tour} · ${p.surface}</div>
+      <div class="pick-player">${p.player}</div>
+      <div class="pick-match">${p.match} — ${p.tournament}</div>
+      <div class="pick-stats">
+        ${p.stats.map(s => `
+          <div class="pick-stat">
+            <div class="pick-stat-val">${s.val}</div>
+            <div class="pick-stat-label">${s.label}</div>
+          </div>`).join('')}
+      </div>
+      <div class="pick-reasoning">${p.reasoning}</div>
+    </div>
+  `).join('');
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────────
+function render() {
+  let data = [...allMatches];
+
+  // Filter
+  if (filters.tour !== 'all') data = data.filter(m => m.tour === filters.tour);
+  if (filters.surface !== 'all') data = data.filter(m => m.surface === filters.surface);
+  if (searchQ) {
+    const q = searchQ.toLowerCase();
+    data = data.filter(m =>
+      (m.player_a||'').toLowerCase().includes(q) ||
+      (m.player_b||'').toLowerCase().includes(q) ||
+      (m.tournament||'').toLowerCase().includes(q)
+    );
+  }
+
+  // Sort
+  if (sortBy === 'confidence') {
+    data.sort((a,b) => Math.max(b.prob_a,b.prob_b) - Math.max(a.prob_a,a.prob_b));
+  } else if (sortBy === 'total') {
+    data.sort((a,b) => (b.pred_total_games||0) - (a.pred_total_games||0));
+  } else if (sortBy === 'breaks') {
+    data.sort((a,b) => (b.pred_breaks_per_set||0) - (a.pred_breaks_per_set||0));
+  }
+
+  const grid = document.getElementById('match-grid');
+  const noRes = document.getElementById('no-results');
+
+  if (!data.length) {
+    grid.innerHTML = '';
+    noRes.style.display = 'block';
+    return;
+  }
+  noRes.style.display = 'none';
+  grid.innerHTML = data.map(matchCard).join('');
+
+  // Update value picks based on ALL matches (not filtered)
+  renderValuePicks(allMatches);
+}
+
+// ── MATCH CARD ─────────────────────────────────────────────────────────────────
+function matchCard(m) {
+  const pa = m.player_a || '—';
+  const pb = m.player_b || '—';
+  const probA = (m.prob_a || 0.5);
+  const probB = (m.prob_b || 0.5);
+  const favA = probA >= probB;
+  const tour = (m.tour||'ATP').toUpperCase();
+  const surf = m.surface || 'Hard';
+  const surfKey = surf.toLowerCase();
+
+  // Elo vs model delta
+  const eloA = m.elo_prob_a || probA;
+  const delta = ((probA - eloA)*100).toFixed(1);
+  const deltaStr = delta > 0 ? `+${delta}%` : `${delta}%`;
+  const deltaColor = Math.abs(delta) > 5 ? (delta > 0 ? 'var(--accent)' : 'var(--accent3)') : 'var(--muted)';
+
+  // Total games
+  const total = m.pred_total_games;
+  const line  = m.suggested_total_line;
+  const rec   = (m.total_recommendation||'').toUpperCase();
+  const recClass = rec === 'OVER' ? 'rec-over' : 'rec-under';
+
+  // Handicap
+  const diff = Math.abs(m.pred_game_diff || 0);
+  const hcPct = Math.min(100, (diff / 12) * 100);
+
+  // Breaks
+  const bps = m.pred_breaks_per_set || 0;
+  const bvsAvg = m.breaks_vs_avg || 0;
+  const totalBvsAvg = m.breaks_total_vs_avg || 0;
+  const bClass = Math.abs(totalBvsAvg) > 0.5 ? (totalBvsAvg > 0 ? 'rec-high' : 'rec-low') : '';
+
+  // Warning
+  const warn = (!m.found_a || !m.found_b);
+  const warnName = !m.found_a ? pa : (!m.found_b ? pb : '');
+
+  // Handicap display — show winner advantage
+  const hcWinner = favA ? pa.split(' ').pop() : pb.split(' ').pop();
+  const hcLoser  = favA ? pb.split(' ').pop() : pa.split(' ').pop();
+  const hcDiff   = m.pred_game_diff ? Math.abs(m.pred_game_diff) : 0;
+
+  return `
+<div class="match-card">
+  <div class="card-head">
+    <div class="tournament-name">${m.tournament || 'Unknown Tournament'}</div>
+    <div class="tags">
+      ${warn ? `<span class="warn-tag">ELO ONLY</span>` : ''}
+      <span class="tag tag-${tour.toLowerCase()}">${tour}</span>
+      <span class="tag tag-${surfKey}">${surf}</span>
+    </div>
+  </div>
+
+  <div class="players">
+    <div class="player-row">
+      <div class="player-name ${favA ? 'favourite' : ''}">${pa}</div>
+      <div class="prob-bar-wrap">
+        <div class="prob-bar bar-a" style="width:${(probA*100).toFixed(1)}%"></div>
+      </div>
+      <div class="prob-pct ${probA >= 0.6 ? 'high' : 'low'}">${(probA*100).toFixed(1)}%</div>
+      <div class="odds-val">${m.implied_odds_a ? m.implied_odds_a.toFixed(2) : '—'}</div>
+    </div>
+    <div class="player-row">
+      <div class="player-name ${!favA ? 'favourite' : ''}">${pb}</div>
+      <div class="prob-bar-wrap">
+        <div class="prob-bar bar-b" style="width:${(probB*100).toFixed(1)}%"></div>
+      </div>
+      <div class="prob-pct ${probB >= 0.6 ? 'high' : 'low'}">${(probB*100).toFixed(1)}%</div>
+      <div class="odds-val">${m.implied_odds_b ? m.implied_odds_b.toFixed(2) : '—'}</div>
+    </div>
+  </div>
+
+  <div class="markets">
+    <div class="market">
+      <div class="market-label">Total Games</div>
+      <div class="market-value">${total ? total.toFixed(1) : '—'}</div>
+      ${line ? `<div class="market-sub ${recClass}">${rec} ${line}</div>` : ''}
+    </div>
+    <div class="market">
+      <div class="market-label">Handicap</div>
+      <div class="market-value">${hcDiff ? hcDiff.toFixed(1) : '—'}</div>
+      ${hcDiff ? `<div class="market-sub" style="color:var(--muted)">${hcWinner} −${hcDiff.toFixed(1)}</div>
+      <div class="hc-bar-wrap"><div class="hc-bar" style="width:${hcPct}%"></div></div>` : ''}
+    </div>
+    <div class="market">
+      <div class="market-label">Total Breaks</div>
+      <div class="market-value ${bClass}">${m.pred_breaks_total ? m.pred_breaks_total.toFixed(1) : (bps ? bps.toFixed(2) : '—')}</div>
+      ${m.suggested_breaks_line ? `<div class="market-sub ${m.breaks_recommendation === 'OVER' ? 'rec-over' : 'rec-under'}">${m.breaks_recommendation} ${m.suggested_breaks_line}</div>` : (bvsAvg !== 0 ? `<div class="market-sub ${bClass}">${bvsAvg > 0 ? '+' : ''}${bvsAvg.toFixed(2)}/set vs avg</div>` : '')}
+    </div>
+  </div>
+
+  <div class="elo-note">
+    <div>Elo prob: <span>${(eloA*100).toFixed(1)}%</span></div>
+    <div>Model vs Elo: <span style="color:${deltaColor}">${deltaStr}</span></div>
+    ${m.pred_game_diff ? `<div>Game spread: <span>±${Math.abs(m.pred_game_diff).toFixed(1)}</span></div>` : ''}
+  </div>
+  ${(m.odds_a_best || m.edge_a !== undefined) ? `
+  <div class="odds-row">
+    ${m.odds_a_best ? `<div class="odds-item">Best odds: <strong>${m.odds_a_best}</strong> ${pa.split(' ').pop()} / <strong>${m.odds_b_best}</strong> ${pb.split(' ').pop()} <span class="book">${m.h2h_book||''}</span></div>` : ''}
+    ${m.odds_a_pinnacle ? `<div class="odds-item">Pinnacle: <strong>${m.odds_a_pinnacle}</strong> / <strong>${m.odds_b_pinnacle}</strong></div>` : ''}
+    ${m.total_line ? `<div class="odds-item">Total line: <strong>${m.total_line}</strong></div>` : ''}
+    ${m.edge_a !== undefined ? (() => {
+      const edgeA = m.edge_a; const edgeB = m.edge_b;
+      const bestEdge = Math.abs(edgeA) > Math.abs(edgeB) ? edgeA : edgeB;
+      const bestPlayer = Math.abs(edgeA) > Math.abs(edgeB) ? pa.split(' ').pop() : pb.split(' ').pop();
+      const cls = bestEdge > 0.03 ? 'edge-pos' : bestEdge < -0.03 ? 'edge-neg' : 'edge-neu';
+      const sign = bestEdge > 0 ? '+' : '';
+      return `<div class="odds-item">Edge: <span class="edge-badge ${cls}">${bestPlayer} ${sign}${(bestEdge*100).toFixed(1)}%</span></div>`;
+    })() : ''}
+  </div>` : ''}
+</div>`;
+}
+
+// ── EVENTS ─────────────────────────────────────────────────────────────────────
+
+// File input
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadCSV(e.target.files[0]);
+});
+
+// Drag and drop anywhere on the page
+document.body.addEventListener('dragover', e => {
+  e.preventDefault();
+  document.body.style.outline = '2px dashed var(--accent)';
+});
+document.body.addEventListener('dragleave', e => {
+  if (e.relatedTarget === null) document.body.style.outline = '';
+});
+document.body.addEventListener('drop', e => {
+  e.preventDefault();
+  document.body.style.outline = '';
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.csv')) loadCSV(file);
+});
+
+// Filter pills
+document.querySelectorAll('.pill[data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const group = btn.dataset.filter;
+    document.querySelectorAll(`.pill[data-filter="${group}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filters[group] = btn.dataset.val;
+    render();
+  });
+});
+
+// Sort pills
+document.querySelectorAll('.pill[data-sort]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pill[data-sort]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    sortBy = btn.dataset.sort;
+    render();
+  });
+});
+
+// Search
+document.getElementById('search').addEventListener('input', e => {
+  searchQ = e.target.value;
+  render();
+});
+
+// ── GOOGLE DRIVE AUTO-FETCH ───────────────────────────────────────────────────
+const GDRIVE_FOLDER_ID = '1dRYMT4GK1xJ3-4xwfv6xSbzO4l2XsyBl';
+
+async function fetchFromGDrive() {
+  // Get today's date string
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0];
+  const yesterday = new Date(today - 86400000).toISOString().split('T')[0];
+
+  // Try to find CSV in the public Drive folder via Google Drive API (public folder)
+  // We try today's filename first, then yesterday's as fallback
+  const filenames = [
+    `predictions_${dateStr}.csv`,
+    `predictions_${yesterday}.csv`,
+  ];
+
+  document.getElementById('header-sub').textContent = 'Checking for latest predictions...';
+
+  for (const filename of filenames) {
+    try {
+      // Search Google Drive public folder for file by name
+      const searchUrl = `https://www.googleapis.com/drive/v3/files?q=name='${filename}'+and+'${GDRIVE_FOLDER_ID}'+in+parents&key=AIzaSyD-placeholder&fields=files(id,name)`;
+
+      // Since we can't use API key in client, use direct file listing approach
+      // User needs to share individual files as "Anyone with link"
+      // Fall back to demo and show instructions
+      throw new Error('needs_setup');
+    } catch(e) {
+      if (e.message !== 'needs_setup') continue;
+      break;
+    }
+  }
+
+  // Show setup instructions + load demo
+  showDriveInstructions(dateStr);
+  loadDemo();
+}
+
+function showDriveInstructions(dateStr) {
+  const meta = document.getElementById('header-meta');
+  meta.innerHTML = `
+    <div style="text-align:right;max-width:320px">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--warn);margin-bottom:4px">
+        ⚡ ONE-TIME SETUP NEEDED
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);line-height:1.6">
+        Each morning: upload <strong style="color:var(--text)">predictions_${dateStr}.csv</strong><br>
+        to your Drive folder → share as "Anyone with link"<br>
+        → paste link using 📂 button
+      </div>
+    </div>
+    <button class="upload-btn" onclick="document.getElementById('file-input').click()" style="flex-shrink:0;padding:8px 16px;font-size:11px;">
+      📂 Load CSV
+    </button>
+    <input type="file" id="file-input" accept=".csv">
+  `;
+  // Re-attach file input listener
+  document.getElementById('file-input').addEventListener('change', e => {
+    if (e.target.files[0]) loadCSV(e.target.files[0]);
+  });
+}
+
+async function tryLoadFromDriveLink(shareLink) {
+  // Convert share link to direct download
+  // Share link format: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+  // Direct download: https://drive.google.com/uc?export=download&id=FILE_ID
+  try {
+    let fileId = '';
+    if (shareLink.includes('/file/d/')) {
+      fileId = shareLink.split('/file/d/')[1].split('/')[0];
+    } else if (shareLink.includes('id=')) {
+      fileId = shareLink.split('id=')[1].split('&')[0];
+    }
+    if (!fileId) throw new Error('Could not parse file ID');
+
+    // Use CORS proxy to bypass Google Drive CORS restrictions
+    const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+    const proxyUrl  = `https://corsproxy.io/?${encodeURIComponent(directUrl)}`;
+    document.getElementById('header-sub').textContent = 'Loading from Google Drive...';
+
+    const response = await fetch(proxyUrl);
+    if (!response.ok) throw new Error('Fetch failed');
+    const text = await response.text();
+
+    // Check it looks like a CSV
+    if (!text.includes('player_a') && !text.includes('prob_a')) {
+      throw new Error('Not a valid predictions CSV');
+    }
+
+    allMatches = parseCSV(text);
+    document.getElementById('stats-bar').style.display = '';
+    document.getElementById('toolbar').style.display = '';
+    updateStats();
+    render();
+
+    const d = new Date();
+    const dateStr = d.toLocaleDateString('en-AU', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    document.getElementById('date-display') && (document.getElementById('date-display').textContent = dateStr);
+    document.getElementById('header-sub').textContent =
+      `${allMatches.length} matches · ${allMatches.filter(m=>m.tour==='ATP').length} ATP · ${allMatches.filter(m=>m.tour==='WTA').length} WTA · via Google Drive`;
+    return true;
+  } catch(e) {
+    console.error('Drive load failed:', e);
+    return false;
+  }
+}
+
+// Check if URL has a drive link parameter
+function checkUrlParam() {
+  const params = new URLSearchParams(window.location.search);
+  const driveLink = params.get('csv');
+  if (driveLink) {
+    tryLoadFromDriveLink(decodeURIComponent(driveLink)).then(ok => {
+      if (!ok) loadDemo();
+    });
+    return true;
+  }
+  return false;
+}
+
+// Add Drive link input to header
+function addDriveLinkInput() {
+  const meta = document.getElementById('header-meta');
+  // Add a paste-link button alongside Load CSV
+  const linkBtn = document.createElement('button');
+  linkBtn.className = 'upload-btn';
+  linkBtn.style.cssText = 'flex-shrink:0;padding:8px 16px;font-size:11px;margin-right:4px';
+  linkBtn.textContent = '🔗 Drive Link';
+  linkBtn.onclick = async () => {
+    const link = prompt('Paste your Google Drive file share link:');
+    if (!link) return;
+    const ok = await tryLoadFromDriveLink(link);
+    if (!ok) alert('Could not load file. Make sure the file is shared as "Anyone with the link can view"');
+  };
+  meta.insertBefore(linkBtn, meta.querySelector('button'));
+}
+
+// ── GIST AUTO-LOAD ────────────────────────────────────────────────────────────
+const GIST_RAW_URL = 'https://gist.githubusercontent.com/ben79sf-del/baba7b8ef46bdbd50881c55f909b8f31/raw/predictions.csv';
+
+async function autoLoadGist() {
+  try {
+    document.getElementById('header-sub').textContent = 'Loading latest predictions...';
+    const cacheBust = '?t=' + Date.now();
+
+    // Try multiple proxies in order until one works
+    // Add timestamp to both the Gist URL and proxy URL to bust all caches
+    const ts = Date.now();
+    const proxies = [
+      `https://api.allorigins.win/raw?t=${ts}&url=${encodeURIComponent(GIST_RAW_URL + '?t=' + ts)}`,
+      `https://corsproxy.io/?t=${ts}&${encodeURIComponent(GIST_RAW_URL + '?t=' + ts)}`,
+      `https://api.codetabs.com/v1/proxy?t=${ts}&quest=${encodeURIComponent(GIST_RAW_URL + '?t=' + ts)}`,
+    ];
+
+    let text = null;
+    for (const url of proxies) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) continue;
+        const t = await response.text();
+        if (t.includes('player_a')) { text = t; break; }
+      } catch(e) { continue; }
+    }
+    if (!text) throw new Error('All proxies failed');
+
+    allMatches = parseCSV(text);
+    document.getElementById('stats-bar').style.display = '';
+    document.getElementById('toolbar').style.display = '';
+    updateStats();
+    render();
+
+    const d = new Date();
+    const dateStr = d.toLocaleDateString('en-AU', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    document.getElementById('date-display') && (document.getElementById('date-display').textContent = dateStr);
+    document.getElementById('header-sub').textContent =
+      `${allMatches.length} matches · ${allMatches.filter(m=>m.tour==='ATP').length} ATP · ${allMatches.filter(m=>m.tour==='WTA').length} WTA · auto-loaded`;
+    console.log('Gist loaded successfully');
+  } catch(e) {
+    console.error('Gist load failed:', e);
+    // Fall back to demo
+    loadDemo();
+    document.getElementById('header-sub').textContent = 'Could not auto-load — showing demo data';
+  }
+}
+
+// Initialise — try Gist first, fall back to demo
+if (!checkUrlParam()) {
+  autoLoadGist();
+}
+addDriveLinkInput();
+</script>
+</body>
+</html>
