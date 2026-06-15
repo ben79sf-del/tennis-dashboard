@@ -1481,31 +1481,11 @@ async function autoLoadGist() {
   try {
     document.getElementById('header-sub').textContent = 'Loading latest predictions...';
 
-    // Use GitHub API with token — supports CORS from any domain, high rate limit
-    const GIST_ID = 'baba7b8ef46bdbd50881c55f909b8f31';
-    const GITHUB_TOKEN = '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';
-    const apiUrl = `https://api.github.com/gists/${GIST_ID}`;
-
-    const apiResp = await fetch(apiUrl, {
-      cache: 'no-store',
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Cache-Control': 'no-cache',
-      }
-    });
-
-    if (!apiResp.ok) throw new Error(`GitHub API: ${apiResp.status}`);
-    const gistData = await apiResp.json();
-    const file = gistData.files['predictions.csv'];
-    if (!file) throw new Error('predictions.csv not in Gist');
-
-    const rawResp = await fetch(file.raw_url, {
-      cache: 'no-store',
-      headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-    });
-    if (!rawResp.ok) throw new Error('Raw fetch failed');
-    const text = await rawResp.text();
+    // Fetch via Cloudflare Worker — token stays private server-side, no CORS issues
+    const WORKER_URL = 'https://tennis-gist-proxy.ben79sf.workers.dev/';
+    const resp = await fetch(WORKER_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!resp.ok) throw new Error(`Worker returned ${resp.status}`);
+    const text = await resp.text();
     if (!text.includes('player_a')) throw new Error('Invalid CSV');
 
     allMatches = parseCSV(text);
