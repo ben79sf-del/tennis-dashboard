@@ -1276,6 +1276,19 @@ function matchCard(m) {
     ${m.odds_a_best ? `<div class="odds-item">Best odds: <strong>${m.odds_a_best}</strong> ${pa.split(' ').pop()} / <strong>${m.odds_b_best}</strong> ${pb.split(' ').pop()} <span class="book">${m.h2h_book||''}</span></div>` : ''}
     ${m.odds_a_pinnacle ? `<div class="odds-item">Pinnacle: <strong>${m.odds_a_pinnacle}</strong> / <strong>${m.odds_b_pinnacle}</strong></div>` : ''}
     ${m.total_line ? `<div class="odds-item">Total line: <strong>${m.total_line}</strong></div>` : ''}
+    ${(m.spread_home !== undefined && m.spread_home !== null && m.spread_home !== '') ? (() => {
+      const line = parseFloat(m.spread_home);
+      const predDiff = m.pred_game_diff || 0;
+      const hcOddsA = m.spread_home_odds;
+      const hcOddsB = m.spread_away_odds;
+      const book = m.spread_book || '';
+      const modelVsLine = (predDiff - (-line)).toFixed(1);
+      const hcEdge = Math.abs(modelVsLine) >= 2;
+      const hcCls = hcEdge ? (parseFloat(modelVsLine) > 0 ? 'edge-pos' : 'edge-neg') : 'edge-neu';
+      const aName = pa.split(' ').pop();
+      const bName = pb.split(' ').pop();
+      return `<div class="odds-item">Handicap line: <strong>${aName} ${line >= 0 ? '+' : ''}${line}</strong> @ ${hcOddsA||'—'} / <strong>${bName} ${(-line) >= 0 ? '+' : ''}${(-line).toFixed(1)}</strong> @ ${hcOddsB||'—'} <span class="book">${book}</span> ${hcEdge ? `<span class="edge-badge ${hcCls}">Model: ${parseFloat(predDiff) >= 0 ? '+' : ''}${parseFloat(predDiff).toFixed(1)}</span>` : ''}`;
+    })() : ''}
     ${m.edge_a !== undefined ? (() => {
       const edgeA = m.edge_a; const edgeB = m.edge_b;
       const bestEdge = Math.abs(edgeA) > Math.abs(edgeB) ? edgeA : edgeB;
