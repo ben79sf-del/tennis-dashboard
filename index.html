@@ -1480,27 +1480,33 @@ const GIST_RAW_URL = 'https://gist.githubusercontent.com/ben79sf-del/baba7b8ef46
 async function autoLoadGist() {
   try {
     document.getElementById('header-sub').textContent = 'Loading latest predictions...';
-    const cacheBust = '?t=' + Date.now();
 
-    // Try multiple proxies in order until one works
-    // Add timestamp to both the Gist URL and proxy URL to bust all caches
-    const ts = Date.now();
-    const proxies = [
-      `https://api.allorigins.win/raw?t=${ts}&url=${encodeURIComponent(GIST_RAW_URL + '?t=' + ts)}`,
-      `https://corsproxy.io/?t=${ts}&${encodeURIComponent(GIST_RAW_URL + '?t=' + ts)}`,
-      `https://api.codetabs.com/v1/proxy?t=${ts}&quest=${encodeURIComponent(GIST_RAW_URL + '?t=' + ts)}`,
-    ];
+    // Use GitHub API with token — supports CORS from any domain, high rate limit
+    const GIST_ID = 'baba7b8ef46bdbd50881c55f909b8f31';
+    const GITHUB_TOKEN = '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';
+    const apiUrl = `https://api.github.com/gists/${GIST_ID}`;
 
-    let text = null;
-    for (const url of proxies) {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) continue;
-        const t = await response.text();
-        if (t.includes('player_a')) { text = t; break; }
-      } catch(e) { continue; }
-    }
-    if (!text) throw new Error('All proxies failed');
+    const apiResp = await fetch(apiUrl, {
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Cache-Control': 'no-cache',
+      }
+    });
+
+    if (!apiResp.ok) throw new Error(`GitHub API: ${apiResp.status}`);
+    const gistData = await apiResp.json();
+    const file = gistData.files['predictions.csv'];
+    if (!file) throw new Error('predictions.csv not in Gist');
+
+    const rawResp = await fetch(file.raw_url, {
+      cache: 'no-store',
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+    });
+    if (!rawResp.ok) throw new Error('Raw fetch failed');
+    const text = await rawResp.text();
+    if (!text.includes('player_a')) throw new Error('Invalid CSV');
 
     allMatches = parseCSV(text);
     document.getElementById('stats-bar').style.display = '';
