@@ -698,6 +698,9 @@
       <button class="upload-btn" onclick="document.getElementById('file-input').click()" style="flex-shrink:0;padding:8px 16px;font-size:11px;">
         📂 Load CSV
       </button>
+      <button class="upload-btn" onclick="autoLoadGist()" style="flex-shrink:0;padding:8px 16px;font-size:11px;margin-left:4px;">
+        🔄 Refresh
+      </button>
       <input type="file" id="file-input" accept=".csv">
     </div>
   </header>
@@ -1515,7 +1518,9 @@ async function autoLoadGist() {
     console.error('Gist load failed:', e);
     // Fall back to demo
     loadDemo();
-    document.getElementById('header-sub').textContent = 'Could not auto-load — showing demo data';
+    // Show visible error with details
+    const sub = document.getElementById('header-sub');
+    if (sub) sub.textContent = 'Load failed: ' + e.message + ' — showing demo';
   }
 }
 
