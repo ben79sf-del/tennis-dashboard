@@ -1747,7 +1747,7 @@ async function loadResults() {
     const resp = await fetch(WORKER + Date.now(), { cache: 'no-store' });
     if (!resp.ok) throw new Error('Results fetch failed');
     const text = await resp.text();
-    if (!text.includes('Date')) throw new Error('Invalid results CSV');
+    if (!text.toLowerCase().includes('date') || !text.toLowerCase().includes('matchup')) throw new Error('Invalid results CSV');
 
     const lines = text.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.replace(/"/g,'').trim().toLowerCase());
