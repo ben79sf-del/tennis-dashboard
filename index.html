@@ -1765,9 +1765,15 @@ async function loadResults() {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = (vals[i]||'').replace(/"/g,'').trim(); });
       return obj;
-    }).filter(r => r.matchup || r.lean);
+    }).filter(r => r.matchup || r.lean || r['matchup'] || r['lean']);
 
-    if (results.length === 0) return;
+    console.log('Results parsed:', results.length, 'rows');
+    if (results.length > 0) console.log('First row:', JSON.stringify(results[0]));
+
+    if (results.length === 0) {
+      console.log('No results after filtering - headers were:', headers);
+      return;
+    }
 
     document.getElementById('results-section').style.display = 'block';
     document.getElementById('results-last-updated').textContent =
@@ -1898,8 +1904,11 @@ function renderResults(results) {
 // Load Chart.js then results
 const chartScript = document.createElement('script');
 chartScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js';
-chartScript.onload = () => loadResults();
+chartScript.onload = () => { console.log('Chart.js loaded'); loadResults(); };
+chartScript.onerror = () => { console.log('Chart.js failed, loading results without chart'); loadResults(); };
 document.head.appendChild(chartScript);
+// Also try after 3 seconds as fallback
+setTimeout(() => { if (document.getElementById('results-section').style.display === 'none') { console.log('Fallback results load'); loadResults(); } }, 3000);
 </script>
 </body>
 </html>
