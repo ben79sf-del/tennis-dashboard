@@ -1743,8 +1743,8 @@ let pnlChart = null;
 
 async function loadResults() {
   try {
-    const WORKER = 'https://tennis-gist-proxy.ben79sf.workers.dev/?type=results&t=';
-    const resp = await fetch(WORKER + Date.now(), { cache: 'no-store' });
+    const WORKER = 'https://tennis-gist-proxy.ben79sf.workers.dev/';
+    const resp = await fetch(WORKER + '?type=results&t=' + Date.now(), { cache: 'no-store' });
     if (!resp.ok) throw new Error('Results fetch failed');
     const text = await resp.text();
     // Accept any CSV with content
