@@ -1782,9 +1782,19 @@ async function gradeResult(rowIndex, result) {
   resultsCache[cacheIdx].result = result;
 
   // Calculate PnL
-  const odds = parseFloat(row.odds || row.Odds || 0);
+  let odds = parseFloat(row.odds || row.Odds || 0);
   let pnl = '';
-  if (result === 'WIN' && odds > 0) pnl = (odds - 1).toFixed(2);
+  if (result === 'WIN') {
+    if (!odds || odds <= 1) {
+      const input = prompt(`Enter decimal odds for this WIN (e.g. 1.85):`);
+      odds = parseFloat(input);
+      if (odds > 1) {
+        resultsCache[cacheIdx].odds = odds.toFixed(2);
+        resultsCache[cacheIdx].Odds = odds.toFixed(2);
+      }
+    }
+    if (odds > 1) pnl = (odds - 1).toFixed(2);
+  }
   if (result === 'LOSS') pnl = '-1.00';
   if (result === 'PUSH') pnl = '0.00';
   resultsCache[cacheIdx].PnL_Units = pnl;
