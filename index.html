@@ -1705,7 +1705,7 @@ async function autoLoadGist() {
 
     // Fetch via Cloudflare Worker — token stays private server-side, no CORS issues
     const WORKER_URL = 'https://tennis-gist-proxy.ben79sf.workers.dev/';
-    const resp = await fetch(WORKER_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    const resp = await fetch(WORKER_URL + '?type=predictions&t=' + Date.now(), { cache: 'no-store' });
     if (!resp.ok) throw new Error(`Worker returned ${resp.status}`);
     const text = await resp.text();
     if (!text.includes('player_a')) throw new Error('Invalid CSV');
@@ -1765,13 +1765,18 @@ async function loadResults() {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = (vals[i]||'').replace(/"/g,'').trim(); });
       return obj;
-    }).filter(r => r.matchup || r.lean || r['matchup'] || r['lean']);
+    });
 
     console.log('Results parsed:', results.length, 'rows');
-    if (results.length > 0) console.log('First row:', JSON.stringify(results[0]));
+    console.log('Headers:', headers);
+    if (results.length > 0) console.log('First row keys:', Object.keys(results[0]));
 
-    if (results.length === 0) {
-      console.log('No results after filtering - headers were:', headers);
+    // Don't filter - show all rows
+    const validResults = results.filter(r => Object.values(r).some(v => v && v.length > 0));
+    console.log('Valid results:', validResults.length);
+
+    if (validResults.length === 0) {
+      console.log('No valid results found');
       return;
     }
 
@@ -1779,7 +1784,7 @@ async function loadResults() {
     document.getElementById('results-last-updated').textContent =
       'Updated ' + new Date().toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
 
-    renderResults(results);
+    renderResults(validResults);
   } catch(e) {
     console.log('Results not available:', e.message);
   }
@@ -1879,23 +1884,36 @@ function renderResults(results) {
   const resCls = { WIN:'r-win', LOSS:'r-loss', PUSH:'r-push', PENDING:'r-pend' };
 
   tbody.innerHTML = sorted.map(r => {
-    const pnl = calcPnL(r);
+    // Handle both lowercase and proper case column names
+    const date       = r.date || r.Date || '—';
+    const matchup    = r.matchup || r.Matchup || '—';
+    const tournament = r.tournament || r.Tournament || '—';
+    const betType    = r.bet_type || r.Bet_Type || '';
+    const lean       = r.lean || r.Lean || '—';
+    const conf       = r.confidence || r.Confidence || 'MED';
+    const odds       = r.odds || r.Odds || '—';
+    const line       = r.line || r.Line || '—';
+    const score      = r.score || r.Score || '—';
+    const result     = r.result || r.Result || 'PENDING';
+    const pnlRaw     = r.pnl_units || r.PnL_Units || '';
+
+    const pnl = pnlRaw ? parseFloat(pnlRaw) : (result === 'WIN' && odds !== '—' ? parseFloat(odds) - 1 : result === 'LOSS' ? -1 : result === 'PUSH' ? 0 : null);
     const pnlStr = pnl === null ? '—'
       : pnl > 0 ? `<span class="r-pnl-pos">+${pnl.toFixed(2)}u</span>`
       : pnl < 0 ? `<span class="r-pnl-neg">${pnl.toFixed(2)}u</span>`
       : `<span class="r-pnl-neu">+0.00u</span>`;
-    const res = r.result || 'PENDING';
+
     return `<tr>
-      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${r.date||'—'}</td>
-      <td style="font-weight:500;font-size:12px">${r.matchup||'—'}</td>
-      <td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${r.tournament||'—'}</td>
-      <td><span class="r-type ${typeCls[r.bet_type]||'r-ml'}">${typeLabel[r.bet_type]||r.bet_type||'—'}</span></td>
-      <td style="font-size:12px">${r.lean||'—'}</td>
-      <td><span class="r-conf ${confCls[r.confidence]||'r-med'}">${r.confidence||'—'}</span></td>
-      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${r.odds||'—'}</td>
-      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${r.line||'—'}</td>
-      <td style="font-family:var(--font-mono);font-size:11px">${r.score||'—'}</td>
-      <td><span class="r-result ${resCls[res]||'r-pend'}">${res}</span></td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${date}</td>
+      <td style="font-weight:500;font-size:12px">${matchup}</td>
+      <td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${tournament}</td>
+      <td><span class="r-type ${typeCls[betType]||'r-ml'}">${typeLabel[betType]||betType||'—'}</span></td>
+      <td style="font-size:12px">${lean}</td>
+      <td><span class="r-conf ${confCls[conf]||'r-med'}">${conf}</span></td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${odds}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${line}</td>
+      <td style="font-family:var(--font-mono);font-size:11px">${score}</td>
+      <td><span class="r-result ${resCls[result]||'r-pend'}">${result}</span></td>
       <td>${pnlStr}</td>
     </tr>`;
   }).join('');
