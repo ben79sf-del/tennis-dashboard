@@ -669,6 +669,162 @@
   .odds-item strong { color: var(--text); font-size: 12px; }
   .odds-item .book  { color: var(--muted); font-size: 9px; margin-left: 3px; }
 
+  /* ── RESULTS TRACKER ── */
+  #results-section {
+    display: none;
+    margin-top: 48px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .section-title {
+    font-family: var(--font-head);
+    font-size: 24px;
+    letter-spacing: 2px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .results-stats {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 900px) { .results-stats { grid-template-columns: repeat(4, 1fr); } }
+
+  .r-stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+
+  .r-stat-val {
+    font-family: var(--font-head);
+    font-size: 26px;
+    letter-spacing: 1px;
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+
+  .r-stat-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .results-breakdown {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .r-breakdown {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+
+  .r-breakdown-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .r-breakdown-stats { display: flex; gap: 12px; }
+  .r-breakdown-stat { display: flex; flex-direction: column; }
+  .r-breakdown-val { font-family: var(--font-head); font-size: 20px; line-height: 1; }
+  .r-breakdown-label { font-family: var(--font-mono); font-size: 9px; color: var(--muted); }
+
+  .results-table-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    overflow-x: auto;
+  }
+
+  .results-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+
+  .results-table thead th {
+    padding: 9px 12px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+    white-space: nowrap;
+  }
+
+  .results-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .results-table tbody tr:last-child { border-bottom: none; }
+  .results-table tbody tr:hover { background: var(--bg3); }
+  .results-table tbody td { padding: 9px 12px; font-size: 12px; }
+
+  .r-type { font-family: var(--font-mono); font-size: 9px; font-weight: 500; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; }
+  .r-ml   { background: rgba(96,165,250,0.15); color: var(--accent2); border: 1px solid rgba(96,165,250,0.3); }
+  .r-tot  { background: rgba(200,240,96,0.15); color: var(--accent);  border: 1px solid rgba(200,240,96,0.3); }
+  .r-hc   { background: rgba(168,85,247,0.15); color: #c084fc;        border: 1px solid rgba(168,85,247,0.3); }
+  .r-brk  { background: rgba(251,146,60,0.15); color: #fb923c;        border: 1px solid rgba(251,146,60,0.3); }
+
+  .r-conf { font-family: var(--font-mono); font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; }
+  .r-high { background: rgba(74,222,128,0.2);  color: #4ade80; }
+  .r-med  { background: rgba(250,204,21,0.2);  color: #facc15; }
+  .r-low  { background: rgba(107,114,128,0.2); color: var(--muted); }
+
+  .r-result { font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .r-win  { color: #4ade80; }
+  .r-loss { color: #f87171; }
+  .r-push { color: #facc15; }
+  .r-pend { color: var(--muted); }
+
+  .r-pnl-pos { color: #4ade80; font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+  .r-pnl-neg { color: #f87171; font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+  .r-pnl-neu { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+
+  .pnl-chart-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .pnl-chart-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 640px) {
     #match-grid { grid-template-columns: 1fr; }
@@ -772,7 +928,60 @@
   <div id="match-grid"></div>
   <div id="no-results">No matches found</div>
 
-  <footer>
+    <!-- RESULTS TRACKER -->
+  <div id="results-section">
+    <div class="section-header">
+      <div class="section-title">📊 RESULTS TRACKER</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted)" id="results-last-updated"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="results-stats">
+      <div class="r-stat"><div class="r-stat-val" id="rs-graded" style="color:var(--accent2)">0</div><div class="r-stat-label">Graded</div></div>
+      <div class="r-stat"><div class="r-stat-val" id="rs-wins" style="color:#4ade80">0</div><div class="r-stat-label">Wins</div></div>
+      <div class="r-stat"><div class="r-stat-val" id="rs-losses" style="color:#f87171">0</div><div class="r-stat-label">Losses</div></div>
+      <div class="r-stat"><div class="r-stat-val" id="rs-pushes" style="color:#facc15">0</div><div class="r-stat-label">Pushes</div></div>
+      <div class="r-stat"><div class="r-stat-val" id="rs-winrate" style="color:var(--accent)">—</div><div class="r-stat-label">Win Rate</div></div>
+      <div class="r-stat"><div class="r-stat-val" id="rs-pnl">—</div><div class="r-stat-label">P&L</div></div>
+      <div class="r-stat"><div class="r-stat-val" id="rs-pending" style="color:#facc15">0</div><div class="r-stat-label">Pending</div></div>
+    </div>
+
+    <!-- P&L Chart -->
+    <div class="pnl-chart-wrap">
+      <div class="pnl-chart-title">Cumulative P&L (units)</div>
+      <canvas id="pnl-chart" height="70"></canvas>
+    </div>
+
+    <!-- Market Breakdown -->
+    <div class="results-breakdown" id="results-breakdown"></div>
+
+    <!-- Table -->
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Matchup</th>
+            <th>Tournament</th>
+            <th>Type</th>
+            <th>Lean</th>
+            <th>Conf</th>
+            <th>Odds</th>
+            <th>Line</th>
+            <th>Score</th>
+            <th>Result</th>
+            <th>P&L</th>
+          </tr>
+        </thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+      <div id="results-empty" style="text-align:center;padding:40px;font-family:var(--font-mono);font-size:12px;color:var(--muted);display:none">
+        No results yet — they will appear here once today's picks are graded
+      </div>
+    </div>
+  </div>
+
+<footer>
     <span>TENNIS MODEL v1.0 — Walk-forward XGBoost + Surface Elo</span>
     <span id="footer-date"></span>
   </footer>
@@ -1528,6 +1737,168 @@ if (!checkUrlParam()) {
   autoLoadGist();
 }
 addDriveLinkInput();
+
+// ── RESULTS TRACKER ──────────────────────────────────────────────────────────
+let pnlChart = null;
+
+async function loadResults() {
+  try {
+    const WORKER = 'https://tennis-gist-proxy.ben79sf.workers.dev/?type=results&t=';
+    const resp = await fetch(WORKER + Date.now(), { cache: 'no-store' });
+    if (!resp.ok) throw new Error('Results fetch failed');
+    const text = await resp.text();
+    if (!text.includes('Date')) throw new Error('Invalid results CSV');
+
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.replace(/"/g,'').trim().toLowerCase());
+
+    const results = lines.slice(1).filter(l => l.trim()).map(line => {
+      const vals = [];
+      let cur = '', inQ = false;
+      for (let c of line) {
+        if (c === '"') { inQ = !inQ; }
+        else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+        else cur += c;
+      }
+      vals.push(cur.trim());
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = (vals[i]||'').replace(/"/g,'').trim(); });
+      return obj;
+    }).filter(r => r.matchup || r.lean);
+
+    if (results.length === 0) return;
+
+    document.getElementById('results-section').style.display = 'block';
+    document.getElementById('results-last-updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
+
+    renderResults(results);
+  } catch(e) {
+    console.log('Results not available:', e.message);
+  }
+}
+
+function calcPnL(r) {
+  if (r.result === 'PENDING' || !r.result) return null;
+  if (r.pnl_units && r.pnl_units !== '') return parseFloat(r.pnl_units);
+  if (r.result === 'WIN' && r.odds) return parseFloat((parseFloat(r.odds) - 1).toFixed(2));
+  if (r.result === 'LOSS') return -1.00;
+  if (r.result === 'PUSH') return 0.00;
+  return null;
+}
+
+function renderResults(results) {
+  // Stats
+  const graded  = results.filter(r => r.result && r.result !== 'PENDING');
+  const wins    = results.filter(r => r.result === 'WIN');
+  const losses  = results.filter(r => r.result === 'LOSS');
+  const pushes  = results.filter(r => r.result === 'PUSH');
+  const pending = results.filter(r => !r.result || r.result === 'PENDING');
+  const winRate = (graded.length - pushes.length) > 0
+    ? ((wins.length / (graded.length - pushes.length)) * 100).toFixed(1) + '%' : '—';
+  const totalPnL = graded.reduce((s, r) => s + (calcPnL(r) || 0), 0);
+  const pnlStr = totalPnL === 0 ? '0.00U' : (totalPnL > 0 ? '+' : '') + totalPnL.toFixed(2) + 'U';
+
+  document.getElementById('rs-graded').textContent  = graded.length;
+  document.getElementById('rs-wins').textContent    = wins.length;
+  document.getElementById('rs-losses').textContent  = losses.length;
+  document.getElementById('rs-pushes').textContent  = pushes.length;
+  document.getElementById('rs-winrate').textContent = winRate;
+  document.getElementById('rs-pending').textContent = pending.length;
+  const pnlEl = document.getElementById('rs-pnl');
+  pnlEl.textContent = pnlStr;
+  pnlEl.style.color = totalPnL > 0 ? '#4ade80' : totalPnL < 0 ? '#f87171' : 'var(--text)';
+
+  // Breakdown by market
+  const markets = { MONEYLINE: 'Moneyline', TOTAL: 'Total Games', HANDICAP: 'Handicap', BREAK: 'Break of Serve' };
+  document.getElementById('results-breakdown').innerHTML = Object.entries(markets).map(([k, label]) => {
+    const sub = results.filter(r => r.bet_type === k && r.result && r.result !== 'PENDING');
+    const w = sub.filter(r => r.result === 'WIN').length;
+    const p = sub.filter(r => r.result === 'PUSH').length;
+    const wr = (sub.length - p) > 0 ? ((w/(sub.length-p))*100).toFixed(0)+'%' : '—';
+    const pnl = sub.reduce((s,r) => s + (calcPnL(r)||0), 0);
+    const pnlS = sub.length === 0 ? '—' : (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + 'U';
+    const pnlC = pnl > 0 ? '#4ade80' : pnl < 0 ? '#f87171' : 'var(--text)';
+    return `<div class="r-breakdown">
+      <div class="r-breakdown-title">${label}</div>
+      <div class="r-breakdown-stats">
+        <div class="r-breakdown-stat"><div class="r-breakdown-val" style="color:var(--text)">${sub.length}</div><div class="r-breakdown-label">Graded</div></div>
+        <div class="r-breakdown-stat"><div class="r-breakdown-val" style="color:var(--accent)">${wr}</div><div class="r-breakdown-label">Win %</div></div>
+        <div class="r-breakdown-stat"><div class="r-breakdown-val" style="color:${pnlC}">${pnlS}</div><div class="r-breakdown-label">P&L</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // P&L Chart
+  const gradedSorted = [...graded].sort((a,b) => new Date(a.date)-new Date(b.date));
+  let cum = 0;
+  const chartData = gradedSorted.map((r,i) => { cum += (calcPnL(r)||0); return { x: i+1, y: parseFloat(cum.toFixed(2)) }; });
+
+  const ctx = document.getElementById('pnl-chart').getContext('2d');
+  if (pnlChart) pnlChart.destroy();
+  if (chartData.length > 0) {
+    const lastVal = chartData[chartData.length-1].y;
+    const lc = lastVal >= 0 ? '#4ade80' : '#f87171';
+    pnlChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: chartData.map(d => d.x),
+        datasets: [{ data: chartData.map(d => d.y), borderColor: lc, backgroundColor: lc+'18',
+          borderWidth: 2, pointRadius: chartData.length > 30 ? 0 : 3, fill: true, tension: 0.3 }]
+      },
+      options: {
+        responsive: true, plugins: { legend: { display: false } },
+        scales: {
+          x: { display: false },
+          y: { grid: { color: '#2a2a35' },
+            ticks: { color: '#6b6b80', font: { family: 'DM Mono', size: 10 },
+              callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + 'U' } }
+        }
+      }
+    });
+  }
+
+  // Table
+  const tbody = document.getElementById('results-tbody');
+  const empty = document.getElementById('results-empty');
+  const sorted = [...results].sort((a,b) => new Date(b.date)-new Date(a.date));
+
+  if (sorted.length === 0) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  const typeCls = { MONEYLINE:'r-ml', TOTAL:'r-tot', HANDICAP:'r-hc', BREAK:'r-brk' };
+  const typeLabel = { MONEYLINE:'ML', TOTAL:'TOTAL', HANDICAP:'HC', BREAK:'BREAK' };
+  const confCls = { HIGH:'r-high', MED:'r-med', LOW:'r-low' };
+  const resCls = { WIN:'r-win', LOSS:'r-loss', PUSH:'r-push', PENDING:'r-pend' };
+
+  tbody.innerHTML = sorted.map(r => {
+    const pnl = calcPnL(r);
+    const pnlStr = pnl === null ? '—'
+      : pnl > 0 ? `<span class="r-pnl-pos">+${pnl.toFixed(2)}u</span>`
+      : pnl < 0 ? `<span class="r-pnl-neg">${pnl.toFixed(2)}u</span>`
+      : `<span class="r-pnl-neu">+0.00u</span>`;
+    const res = r.result || 'PENDING';
+    return `<tr>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${r.date||'—'}</td>
+      <td style="font-weight:500;font-size:12px">${r.matchup||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${r.tournament||'—'}</td>
+      <td><span class="r-type ${typeCls[r.bet_type]||'r-ml'}">${typeLabel[r.bet_type]||r.bet_type||'—'}</span></td>
+      <td style="font-size:12px">${r.lean||'—'}</td>
+      <td><span class="r-conf ${confCls[r.confidence]||'r-med'}">${r.confidence||'—'}</span></td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${r.odds||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${r.line||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:11px">${r.score||'—'}</td>
+      <td><span class="r-result ${resCls[res]||'r-pend'}">${res}</span></td>
+      <td>${pnlStr}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Load Chart.js then results
+const chartScript = document.createElement('script');
+chartScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js';
+chartScript.onload = () => loadResults();
+document.head.appendChild(chartScript);
 </script>
 </body>
 </html>
