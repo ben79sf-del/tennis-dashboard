@@ -808,6 +808,33 @@
   .r-pnl-neg { color: #f87171; font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
   .r-pnl-neu { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
 
+  /* ── GRADE BUTTONS ── */
+  .grade-btn {
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .grade-win  { background: rgba(74,222,128,0.15); color: #4ade80; border-color: rgba(74,222,128,0.4); }
+  .grade-win:hover  { background: #4ade80; color: var(--bg); }
+  .grade-loss { background: rgba(248,113,113,0.15); color: #f87171; border-color: rgba(248,113,113,0.4); }
+  .grade-loss:hover { background: #f87171; color: var(--bg); }
+  .grade-push { background: rgba(250,204,21,0.15); color: #facc15; border-color: rgba(250,204,21,0.4); }
+  .grade-push:hover { background: #facc15; color: var(--bg); }
+
+  .grade-saving {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--accent);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
   .pnl-chart-wrap {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -1738,6 +1765,92 @@ if (!checkUrlParam()) {
 }
 addDriveLinkInput();
 
+// ── GRADE RESULT ─────────────────────────────────────────────────────────────
+let resultsCache = [];
+
+async function gradeResult(rowIndex, result) {
+  if (!resultsCache.length) return;
+
+  // Find the row in the sorted results (newest first)
+  const sorted = [...resultsCache].sort((a,b) => new Date(b.date||b.Date) - new Date(a.date||a.Date));
+  const row = sorted[rowIndex];
+  if (!row) return;
+
+  // Update in cache
+  const cacheIdx = resultsCache.indexOf(row);
+  resultsCache[cacheIdx].Result = result;
+  resultsCache[cacheIdx].result = result;
+
+  // Calculate PnL
+  const odds = parseFloat(row.odds || row.Odds || 0);
+  let pnl = '';
+  if (result === 'WIN' && odds > 0) pnl = (odds - 1).toFixed(2);
+  if (result === 'LOSS') pnl = '-1.00';
+  if (result === 'PUSH') pnl = '0.00';
+  resultsCache[cacheIdx].PnL_Units = pnl;
+  resultsCache[cacheIdx].pnl_units = pnl;
+
+  // Re-render immediately
+  renderResults(resultsCache);
+
+  // Push to Gist
+  try {
+    const GIST_ID = 'c7583b9cf49b20df969548765e2d3acb';
+    const WORKER  = 'https://tennis-gist-proxy.ben79sf.workers.dev/';
+
+    // Rebuild CSV from cache
+    const headers = 'Date,Matchup,Tournament,Surface,Tour,Bet_Type,Lean,Confidence,Odds,Line,Bookmaker,Score,Result,PnL_Units,Notes';
+    const rows = resultsCache.map(r => {
+      const vals = [
+        r.date||r.Date||'', r.matchup||r.Matchup||'',
+        r.tournament||r.Tournament||'', r.surface||r.Surface||'',
+        r.tour||r.Tour||'', r.bet_type||r.Bet_Type||'',
+        r.lean||r.Lean||'', r.confidence||r.Confidence||'',
+        r.odds||r.Odds||'', r.line||r.Line||'',
+        r.bookmaker||r.Bookmaker||'', r.score||r.Score||'',
+        r.result||r.Result||'PENDING', r.pnl_units||r.PnL_Units||'',
+        r.notes||r.Notes||''
+      ];
+      return vals.map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',');
+    });
+    const csv = [headers, ...rows].join('\n');
+
+    // Push via fetch to a write endpoint
+    // Since worker is read-only, we use GitHub API directly with token
+    // Store token in sessionStorage (user sets it once per session)
+    let token = sessionStorage.getItem('gh_token');
+    if (!token) {
+      token = prompt('Enter your GitHub token to save grades (stored in session only):');
+      if (!token) return;
+      sessionStorage.setItem('gh_token', token);
+    }
+
+    const resp = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github.v3+json',
+      },
+      body: JSON.stringify({
+        files: { 'tennis_results.csv': { content: csv } }
+      })
+    });
+
+    if (resp.ok) {
+      console.log('Grade saved to Gist');
+    } else {
+      console.error('Failed to save grade:', resp.status);
+      if (resp.status === 401) {
+        sessionStorage.removeItem('gh_token');
+        alert('Token invalid — please try again');
+      }
+    }
+  } catch(e) {
+    console.error('Grade save error:', e);
+  }
+}
+
 // ── RESULTS TRACKER ──────────────────────────────────────────────────────────
 let pnlChart = null;
 
@@ -1784,6 +1897,7 @@ async function loadResults() {
     document.getElementById('results-last-updated').textContent =
       'Updated ' + new Date().toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
 
+    resultsCache = validResults;
     renderResults(validResults);
   } catch(e) {
     console.log('Results not available:', e.message);
@@ -1883,7 +1997,7 @@ function renderResults(results) {
   const confCls = { HIGH:'r-high', MED:'r-med', LOW:'r-low' };
   const resCls = { WIN:'r-win', LOSS:'r-loss', PUSH:'r-push', PENDING:'r-pend' };
 
-  tbody.innerHTML = sorted.map(r => {
+  tbody.innerHTML = sorted.map((r, i) => {
     // Handle both lowercase and proper case column names
     const date       = r.date || r.Date || '—';
     const matchup    = r.matchup || r.Matchup || '—';
@@ -1915,6 +2029,13 @@ function renderResults(results) {
       <td style="font-family:var(--font-mono);font-size:11px">${score}</td>
       <td><span class="r-result ${resCls[result]||'r-pend'}">${result}</span></td>
       <td>${pnlStr}</td>
+      <td>
+        ${result === 'PENDING' ? `
+          <button class="grade-btn grade-win"  onclick="gradeResult(${i}, 'WIN')">W</button>
+          <button class="grade-btn grade-loss" onclick="gradeResult(${i}, 'LOSS')">L</button>
+          <button class="grade-btn grade-push" onclick="gradeResult(${i}, 'PUSH')">P</button>
+        ` : `<span class="grade-saving" style="display:none" id="saving-${i}">saving...</span>`}
+      </td>
     </tr>`;
   }).join('');
 }
