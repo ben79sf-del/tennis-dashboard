@@ -1270,6 +1270,45 @@ function buildValuePicks(data) {
       });
     }
 
+    // ── HANDICAP PICKS ─────────────────────────────────────────────────────────
+    // pred_game_diff is always the absolute predicted margin (always positive).
+    // spread_home is negative when player_a is favoured, positive when player_b is.
+    // Criteria: |model_margin - abs(book_spread)| >= 3.0 AND fav prob >= 65%
+    // Score: gap * 8
+    const spreadHome = m.spread_home;
+    const predDiff   = m.pred_game_diff || 0;
+    const favProb    = Math.max(probA, probB);
+    if (spreadHome !== undefined && spreadHome !== null && spreadHome !== '' && !isNaN(parseFloat(spreadHome))) {
+      const spread      = parseFloat(spreadHome);
+      const bookMargin  = Math.abs(spread);
+      const modelGap    = predDiff - bookMargin;
+      if (Math.abs(modelGap) >= 3.0 && favProb >= 0.65) {
+        const favIsA   = spread < 0;
+        const hcPlayer = favIsA ? pa : pb;
+        const hcOdds   = favIsA ? m.spread_home_odds : m.spread_away_odds;
+        const hcLine   = favIsA ? spread : -spread;
+        const hcLabel  = `${hcPlayer} ${hcLine >= 0 ? '+' : ''}${hcLine}`;
+        const hcConf   = Math.abs(modelGap) >= 4 ? 'HIGH' : 'MED';
+        picks.push({
+          type: 'Handicap',
+          color: 'var(--accent3)',
+          player: hcLabel,
+          match: `${pa} vs ${pb}`,
+          tournament: m.tournament,
+          surface: m.surface,
+          tour,
+          stats: [
+            { val: '+' + predDiff.toFixed(1), label: 'Model Margin' },
+            { val: bookMargin.toFixed(1), label: 'Book Line' },
+            { val: (modelGap >= 0 ? '+' : '') + modelGap.toFixed(1), label: 'Gap' },
+            hcOdds ? { val: hcOdds.toFixed ? hcOdds.toFixed(2) : hcOdds, label: 'Odds' } : null,
+          ].filter(Boolean),
+          reasoning: `Model predicts <strong>${predDiff.toFixed(1)} game</strong> margin · book line is <strong>${bookMargin.toFixed(1)}</strong> · gap of <strong>${Math.abs(modelGap).toFixed(1)} games</strong> in favour of ${hcPlayer.split(' ').pop()}`,
+          score: Math.abs(modelGap) * 8,
+        });
+      }
+    }
+
     // ── BREAK OF SERVE PICKS ───────────────────────────────────────────────────
     // Criteria: total breaks >= 1 game away from suggested line, or strongly vs avg
     const breaksTotal = m.pred_breaks_total;
