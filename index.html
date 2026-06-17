@@ -1278,7 +1278,7 @@ function buildValuePicks(data) {
     const breaksLine = m.suggested_breaks_line;
     const breaksRec = m.breaks_recommendation;
 
-    if (breaksTotal && Math.abs(totalBvsAvg || 0) >= 1.0) {
+    if (breaksTotal && Math.abs(totalBvsAvg || 0) >= 1.0 && breaksLine) {
       const direction = totalBvsAvg > 0 ? 'High Break' : 'Low Break';
       const col = totalBvsAvg > 0 ? 'var(--warn)' : 'var(--accent2)';
       picks.push({
@@ -1301,7 +1301,7 @@ function buildValuePicks(data) {
   });
 
   // Sort by score descending, take top 6
-  return picks.sort((a, b) => b.score - a.score).slice(0, 6);
+  return picks.sort((a, b) => b.score - a.score).slice(0, 8);
 }
 
 function buildMoneylineReasoning(m, player, prob, eloProb, edge) {
