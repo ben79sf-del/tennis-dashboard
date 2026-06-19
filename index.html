@@ -1195,6 +1195,7 @@ function buildValuePicks(data) {
       const confidence = Math.round(probA * 100);
       const oddsVal = m.odds_a_best ? m.odds_a_best.toFixed(2) : null;
       picks.push({
+        marketType: 'MONEYLINE',
         type: 'Moneyline',
         color: 'var(--accent)',
         player: pa,
@@ -1218,6 +1219,7 @@ function buildValuePicks(data) {
       const confidence = Math.round(probB * 100);
       const oddsVal = m.odds_b_best ? m.odds_b_best.toFixed(2) : null;
       picks.push({
+        marketType: 'MONEYLINE',
         type: 'Moneyline',
         color: 'var(--accent)',
         player: pb,
@@ -1252,6 +1254,7 @@ function buildValuePicks(data) {
     if (predTotal && totalLine && Math.abs(predTotal - totalLine) >= 3) {
       const gap = (predTotal - totalLine).toFixed(1);
       picks.push({
+        marketType: 'TOTAL',
         type: totalRec === 'OVER' ? 'Total Games — Over' : 'Total Games — Under',
         color: totalRec === 'OVER' ? 'var(--accent2)' : 'var(--accent3)',
         player: `${totalRec} ${totalLine}`,
@@ -1290,6 +1293,7 @@ function buildValuePicks(data) {
         const hcLabel  = `${hcPlayer} ${hcLine >= 0 ? '+' : ''}${hcLine}`;
         const hcConf   = Math.abs(modelGap) >= 4 ? 'HIGH' : 'MED';
         picks.push({
+          marketType: 'HANDICAP',
           type: 'Handicap',
           color: 'var(--accent3)',
           player: hcLabel,
@@ -1321,7 +1325,9 @@ function buildValuePicks(data) {
       const direction = totalBvsAvg > 0 ? 'High Break' : 'Low Break';
       const col = totalBvsAvg > 0 ? 'var(--warn)' : 'var(--accent2)';
       picks.push({
+        marketType: 'BREAK',
         type: `Break of Serve — ${direction}`,
+        isBreak: true,
         color: col,
         player: breaksLine ? `${breaksRec} ${breaksLine}` : `${breaksTotal.toFixed(1)} breaks`,
         match: `${pa} vs ${pb}`,
@@ -1339,8 +1345,19 @@ function buildValuePicks(data) {
     }
   });
 
-  // Sort by score descending, take top 6
-  return picks.sort((a, b) => b.score - a.score).slice(0, 8);
+  // ── Fixed quota per market: 3 MONEYLINE, 3 TOTAL, 2 HANDICAP, 2 BREAK = up to 8 total
+  // Each pool only contributes picks if it has qualifiers — no padding with weak picks.
+  const QUOTAS = { MONEYLINE: 3, TOTAL: 3, HANDICAP: 2, BREAK: 2 };
+  const result = [];
+  Object.keys(QUOTAS).forEach(market => {
+    const pool = picks
+      .filter(p => p.marketType === market)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, QUOTAS[market]);
+    result.push(...pool);
+  });
+
+  return result;
 }
 
 function buildMoneylineReasoning(m, player, prob, eloProb, edge) {
