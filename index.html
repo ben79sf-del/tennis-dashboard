@@ -1191,7 +1191,10 @@ function buildValuePicks(data) {
     const edgeB = (m.edge_b || 0) * 100;
 
     // Check player A moneyline
-    if (probA >= 0.65 && (edgeA >= 4 || Math.abs(eloDivA) >= 8)) {
+    // Filter: MED confidence requires odds >= 1.65 (short favs need HIGH conf)
+    const oddsA = m.odds_a_best || 0;
+    const confA = probA >= 0.80;
+    if (probA >= 0.65 && (edgeA >= 4 || Math.abs(eloDivA) >= 8) && (confA || !oddsA || oddsA >= 1.65)) {
       const confidence = Math.round(probA * 100);
       const oddsVal = m.odds_a_best ? m.odds_a_best.toFixed(2) : null;
       picks.push({
@@ -1215,7 +1218,10 @@ function buildValuePicks(data) {
     }
 
     // Check player B moneyline
-    if (probB >= 0.65 && (edgeB >= 4 || Math.abs(eloDivB) >= 8)) {
+    // Filter: MED confidence requires odds >= 1.65
+    const oddsB = m.odds_b_best || 0;
+    const confB = probB >= 0.80;
+    if (probB >= 0.65 && (edgeB >= 4 || Math.abs(eloDivB) >= 8) && (confB || !oddsB || oddsB >= 1.65)) {
       const confidence = Math.round(probB * 100);
       const oddsVal = m.odds_b_best ? m.odds_b_best.toFixed(2) : null;
       picks.push({
