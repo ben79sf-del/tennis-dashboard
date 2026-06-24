@@ -995,7 +995,7 @@
             <th>Conf</th>
             <th>Odds</th>
             <th>Line</th>
-            <th>Score</th>
+            <th>Stake</th>
             <th>Result</th>
             <th>P&L</th>
           </tr>
@@ -1843,8 +1843,9 @@ async function gradeResult(rowIndex, result) {
   resultsCache[cacheIdx].Result = result;
   resultsCache[cacheIdx].result = result;
 
-  // Calculate PnL
+  // Calculate PnL in dollars
   let odds = parseFloat(row.odds || row.Odds || 0);
+  const stake = parseStakeDollars(row);
   let pnl = '';
   if (result === 'WIN') {
     if (!odds || odds <= 1) {
@@ -1855,9 +1856,9 @@ async function gradeResult(rowIndex, result) {
         resultsCache[cacheIdx].Odds = odds.toFixed(2);
       }
     }
-    if (odds > 1) pnl = (odds - 1).toFixed(2);
+    if (odds > 1) pnl = ((odds - 1) * stake).toFixed(2);
   }
-  if (result === 'LOSS') pnl = '-1.00';
+  if (result === 'LOSS') pnl = (-stake).toFixed(2);
   if (result === 'PUSH') pnl = '0.00';
   resultsCache[cacheIdx].PnL_Units = pnl;
   resultsCache[cacheIdx].pnl_units = pnl;
@@ -1871,7 +1872,7 @@ async function gradeResult(rowIndex, result) {
     const WORKER  = 'https://tennis-gist-proxy.ben79sf.workers.dev/';
 
     // Rebuild CSV from cache
-    const headers = 'Date,Matchup,Tournament,Surface,Tour,Bet_Type,Lean,Confidence,Odds,Line,Bookmaker,Score,Result,PnL_Units,Notes';
+    const headers = 'Date,Matchup,Tournament,Surface,Tour,Bet_Type,Lean,Confidence,Odds,Line,Bookmaker,Stake,Result,PnL_Units,Notes';
     const rows = resultsCache.map(r => {
       const vals = [
         r.date||r.Date||'', r.matchup||r.Matchup||'',
@@ -1879,7 +1880,7 @@ async function gradeResult(rowIndex, result) {
         r.tour||r.Tour||'', r.bet_type||r.Bet_Type||'',
         r.lean||r.Lean||'', r.confidence||r.Confidence||'',
         r.odds||r.Odds||'', r.line||r.Line||'',
-        r.bookmaker||r.Bookmaker||'', r.score||r.Score||'',
+        r.bookmaker||r.Bookmaker||'', r.stake||r.Stake||r.score||r.Score||'',
         r.result||r.Result||'PENDING', r.pnl_units||r.PnL_Units||'',
         r.notes||r.Notes||''
       ];
@@ -1976,14 +1977,24 @@ async function loadResults() {
   }
 }
 
+function parseStakeDollars(r) {
+  // Read the Stake column — stored as e.g. "115" or "$115"
+  const raw = r.stake || r.Stake || r.score || r.Score || '';
+  const num = parseFloat(raw.toString().replace(/[^0-9.]/g, ''));
+  return (num > 0) ? num : 30; // fallback to $30 (1 unit) for old rows
+}
+
 function calcPnL(r) {
   if (r.result === 'PENDING' || !r.result) return null;
+  // Use stored pnl_units if already graded and saved (dollar amount stored there now)
   if (r.pnl_units && r.pnl_units !== '') return parseFloat(r.pnl_units);
-  if (r.result === 'WIN' && r.odds) return parseFloat((parseFloat(r.odds) - 1).toFixed(2));
-  if (r.result === 'LOSS') return -1.00;
-  if (r.result === 'PUSH') return 0.00;
+  const stake = parseStakeDollars(r);
+  if (r.result === 'WIN' && r.odds) return parseFloat(((parseFloat(r.odds) - 1) * stake).toFixed(2));
+  if (r.result === 'LOSS') return -stake;
+  if (r.result === 'PUSH') return 0;
   return null;
 }
+
 
 function renderResults(results) {
   // Stats
@@ -1995,7 +2006,7 @@ function renderResults(results) {
   const winRate = (graded.length - pushes.length) > 0
     ? ((wins.length / (graded.length - pushes.length)) * 100).toFixed(1) + '%' : '—';
   const totalPnL = graded.reduce((s, r) => s + (calcPnL(r) || 0), 0);
-  const pnlStr = totalPnL === 0 ? '0.00U' : (totalPnL > 0 ? '+' : '') + totalPnL.toFixed(2) + 'U';
+  const pnlStr = totalPnL === 0 ? '$0' : (totalPnL > 0 ? '+$' : '-$') + Math.abs(totalPnL).toFixed(0);
 
   document.getElementById('rs-graded').textContent  = graded.length;
   document.getElementById('rs-wins').textContent    = wins.length;
@@ -2015,7 +2026,7 @@ function renderResults(results) {
     const p = sub.filter(r => r.result === 'PUSH').length;
     const wr = (sub.length - p) > 0 ? ((w/(sub.length-p))*100).toFixed(0)+'%' : '—';
     const pnl = sub.reduce((s,r) => s + (calcPnL(r)||0), 0);
-    const pnlS = sub.length === 0 ? '—' : (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + 'U';
+    const pnlS = sub.length === 0 ? '—' : (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(0);
     const pnlC = pnl > 0 ? '#4ade80' : pnl < 0 ? '#f87171' : 'var(--text)';
     return `<div class="r-breakdown">
       <div class="r-breakdown-title">${label}</div>
@@ -2050,7 +2061,7 @@ function renderResults(results) {
           x: { display: false },
           y: { grid: { color: '#2a2a35' },
             ticks: { color: '#6b6b80', font: { family: 'DM Mono', size: 10 },
-              callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + 'U' } }
+              callback: v => (v >= 0 ? '+$' : '-$') + Math.abs(v).toFixed(0) }}
         }
       }
     });
@@ -2079,15 +2090,16 @@ function renderResults(results) {
     const conf       = r.confidence || r.Confidence || 'MED';
     const odds       = r.odds || r.Odds || '—';
     const line       = r.line || r.Line || '—';
-    const score      = r.score || r.Score || '—';
+    const stake     = r.stake || r.Stake || r.score || r.Score || '—';
+    const stakeDisplay = stake !== '—' ? '$' + stake.toString().replace(/[^0-9]/g,'') : '—';
     const result     = r.result || r.Result || 'PENDING';
     const pnlRaw     = r.pnl_units || r.PnL_Units || '';
 
-    const pnl = pnlRaw ? parseFloat(pnlRaw) : (result === 'WIN' && odds !== '—' ? parseFloat(odds) - 1 : result === 'LOSS' ? -1 : result === 'PUSH' ? 0 : null);
+    const pnl = pnlRaw ? parseFloat(pnlRaw) : calcPnL(r);
     const pnlStr = pnl === null ? '—'
-      : pnl > 0 ? `<span class="r-pnl-pos">+${pnl.toFixed(2)}u</span>`
-      : pnl < 0 ? `<span class="r-pnl-neg">${pnl.toFixed(2)}u</span>`
-      : `<span class="r-pnl-neu">+0.00u</span>`;
+      : pnl > 0 ? `<span class="r-pnl-pos">+$${Math.abs(pnl).toFixed(0)}</span>`
+      : pnl < 0 ? `<span class="r-pnl-neg">-$${Math.abs(pnl).toFixed(0)}</span>`
+      : `<span class="r-pnl-neu">$0</span>`;
 
     return `<tr>
       <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${date}</td>
@@ -2098,7 +2110,7 @@ function renderResults(results) {
       <td><span class="r-conf ${confCls[conf]||'r-med'}">${conf}</span></td>
       <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${odds}</td>
       <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${line}</td>
-      <td style="font-family:var(--font-mono);font-size:11px">${score}</td>
+      <td style="font-family:var(--font-mono);font-size:11px">${stakeDisplay}</td>
       <td><span class="r-result ${resCls[result]||'r-pend'}">${result}</span></td>
       <td>${pnlStr}</td>
       <td>
