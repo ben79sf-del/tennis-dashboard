@@ -808,24 +808,53 @@
   .r-pnl-neg { color: #f87171; font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
   .r-pnl-neu { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
 
-  /* ── GRADE BUTTONS ── */
-  .grade-btn {
-    padding: 3px 8px;
-    border-radius: 3px;
+  /* ── RESULT DROPDOWN ── */
+  .result-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
     font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 600;
+    font-size: 10px;
+    padding: 5px 26px 5px 10px;
     cursor: pointer;
-    border: 1px solid;
-    transition: all 0.15s;
-    text-transform: uppercase;
+    min-width: 96px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b6b80'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    transition: border-color 0.15s;
   }
-  .grade-win  { background: rgba(74,222,128,0.15); color: #4ade80; border-color: rgba(74,222,128,0.4); }
-  .grade-win:hover  { background: #4ade80; color: var(--bg); }
-  .grade-loss { background: rgba(248,113,113,0.15); color: #f87171; border-color: rgba(248,113,113,0.4); }
-  .grade-loss:hover { background: #f87171; color: var(--bg); }
-  .grade-push { background: rgba(250,204,21,0.15); color: #facc15; border-color: rgba(250,204,21,0.4); }
-  .grade-push:hover { background: #facc15; color: var(--bg); }
+  .result-select:focus { outline: none; border-color: var(--accent); }
+  .result-select.sel-win  { border-color: rgba(74,222,128,0.5);  color: #4ade80; background-color: rgba(74,222,128,0.08); }
+  .result-select.sel-loss { border-color: rgba(248,113,113,0.5); color: #f87171; background-color: rgba(248,113,113,0.08); }
+  .result-select.sel-push { border-color: rgba(250,204,21,0.5);  color: #facc15; background-color: rgba(250,204,21,0.08); }
+
+  /* ── AWAITING / SETTLED SECTION HEADERS ── */
+  .results-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 0 10px;
+    margin-top: 4px;
+  }
+  .results-section-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .results-section-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1px 9px;
+  }
 
   .grade-saving {
     font-family: var(--font-mono);
@@ -996,8 +1025,8 @@
             <th>Odds</th>
             <th>Line</th>
             <th>Stake</th>
-            <th>Result</th>
             <th>P&L</th>
+            <th>Result</th>
           </tr>
         </thead>
         <tbody id="results-tbody"></tbody>
@@ -1830,16 +1859,20 @@ addDriveLinkInput();
 // ── GRADE RESULT ─────────────────────────────────────────────────────────────
 let resultsCache = [];
 
-async function gradeResult(rowIndex, result) {
+async function gradeResult(cacheIdx, result, selectEl) {
   if (!resultsCache.length) return;
-
-  // Find the row in the sorted results (newest first)
-  const sorted = [...resultsCache].sort((a,b) => new Date(b.date||b.Date) - new Date(a.date||a.Date));
-  const row = sorted[rowIndex];
+  const row = resultsCache[cacheIdx];
   if (!row) return;
 
+  // Update colour on the dropdown immediately
+  if (selectEl) {
+    selectEl.className = 'result-select';
+    if (result === 'WIN')  selectEl.classList.add('sel-win');
+    if (result === 'LOSS') selectEl.classList.add('sel-loss');
+    if (result === 'PUSH') selectEl.classList.add('sel-push');
+  }
+
   // Update in cache
-  const cacheIdx = resultsCache.indexOf(row);
   resultsCache[cacheIdx].Result = result;
   resultsCache[cacheIdx].result = result;
 
@@ -1863,7 +1896,7 @@ async function gradeResult(rowIndex, result) {
   resultsCache[cacheIdx].PnL_Units = pnl;
   resultsCache[cacheIdx].pnl_units = pnl;
 
-  // Re-render immediately
+  // Re-render stats and chart (not table — dropdown updated in place)
   renderResults(resultsCache);
 
   // Push to Gist
@@ -1997,7 +2030,7 @@ function calcPnL(r) {
 
 
 function renderResults(results) {
-  // Stats
+  // ── Stats ────────────────────────────────────────────────────────────────────
   const graded  = results.filter(r => r.result && r.result !== 'PENDING');
   const wins    = results.filter(r => r.result === 'WIN');
   const losses  = results.filter(r => r.result === 'LOSS');
@@ -2018,10 +2051,10 @@ function renderResults(results) {
   pnlEl.textContent = pnlStr;
   pnlEl.style.color = totalPnL > 0 ? '#4ade80' : totalPnL < 0 ? '#f87171' : 'var(--text)';
 
-  // Breakdown by market
+  // ── Breakdown by market ──────────────────────────────────────────────────────
   const markets = { MONEYLINE: 'Moneyline', TOTAL: 'Total Games', HANDICAP: 'Handicap', BREAK: 'Break of Serve' };
   document.getElementById('results-breakdown').innerHTML = Object.entries(markets).map(([k, label]) => {
-    const sub = results.filter(r => r.bet_type === k && r.result && r.result !== 'PENDING');
+    const sub = results.filter(r => (r.bet_type||r.Bet_Type) === k && r.result && r.result !== 'PENDING');
     const w = sub.filter(r => r.result === 'WIN').length;
     const p = sub.filter(r => r.result === 'PUSH').length;
     const wr = (sub.length - p) > 0 ? ((w/(sub.length-p))*100).toFixed(0)+'%' : '—';
@@ -2033,16 +2066,15 @@ function renderResults(results) {
       <div class="r-breakdown-stats">
         <div class="r-breakdown-stat"><div class="r-breakdown-val" style="color:var(--text)">${sub.length}</div><div class="r-breakdown-label">Graded</div></div>
         <div class="r-breakdown-stat"><div class="r-breakdown-val" style="color:var(--accent)">${wr}</div><div class="r-breakdown-label">Win %</div></div>
-        <div class="r-breakdown-stat"><div class="r-breakdown-val" style="color:${pnlC}">${pnlS}</div><div class="r-breakdown-label">P&L</div></div>
+        <div class="r-breakdown-stat"><div class="r-breakdown-val" style="color:${pnlC}">${pnlS}</div><div class="r-breakdown-label">P&amp;L</div></div>
       </div>
     </div>`;
   }).join('');
 
-  // P&L Chart
-  const gradedSorted = [...graded].sort((a,b) => new Date(a.date)-new Date(b.date));
+  // ── P&L Chart ─────────────────────────────────────────────────────────────────
+  const gradedSorted = [...graded].sort((a,b) => new Date(a.date||a.Date)-new Date(b.date||b.Date));
   let cum = 0;
   const chartData = gradedSorted.map((r,i) => { cum += (calcPnL(r)||0); return { x: i+1, y: parseFloat(cum.toFixed(2)) }; });
-
   const ctx = document.getElementById('pnl-chart').getContext('2d');
   if (pnlChart) pnlChart.destroy();
   if (chartData.length > 0) {
@@ -2067,33 +2099,32 @@ function renderResults(results) {
     });
   }
 
-  // Table
-  const tbody = document.getElementById('results-tbody');
-  const empty = document.getElementById('results-empty');
-  const sorted = [...results].sort((a,b) => new Date(b.date)-new Date(a.date));
-
-  if (sorted.length === 0) { tbody.innerHTML=''; empty.style.display='block'; return; }
-  empty.style.display = 'none';
-
-  const typeCls = { MONEYLINE:'r-ml', TOTAL:'r-tot', HANDICAP:'r-hc', BREAK:'r-brk' };
+  // ── Table helpers ─────────────────────────────────────────────────────────────
+  const typeCls   = { MONEYLINE:'r-ml', TOTAL:'r-tot', HANDICAP:'r-hc', BREAK:'r-brk' };
   const typeLabel = { MONEYLINE:'ML', TOTAL:'TOTAL', HANDICAP:'HC', BREAK:'BREAK' };
-  const confCls = { HIGH:'r-high', MED:'r-med', LOW:'r-low' };
-  const resCls = { WIN:'r-win', LOSS:'r-loss', PUSH:'r-push', PENDING:'r-pend' };
+  const confCls   = { HIGH:'r-high', MED:'r-med', LOW:'r-low' };
 
-  tbody.innerHTML = sorted.map((r, i) => {
-    // Handle both lowercase and proper case column names
+  function rowHtml(r, globalIdx) {
     const date       = r.date || r.Date || '—';
     const matchup    = r.matchup || r.Matchup || '—';
     const tournament = r.tournament || r.Tournament || '—';
     const betType    = r.bet_type || r.Bet_Type || '';
     const lean       = r.lean || r.Lean || '—';
-    const conf       = r.confidence || r.Confidence || 'MED';
+    const conf       = (r.confidence || r.Confidence || 'MED').toUpperCase();
     const odds       = r.odds || r.Odds || '—';
     const line       = r.line || r.Line || '—';
-    const stake     = r.stake || r.Stake || r.score || r.Score || '—';
-    const stakeDisplay = stake !== '—' ? '$' + stake.toString().replace(/[^0-9]/g,'') : '—';
-    const result     = r.result || r.Result || 'PENDING';
+    const stakeRaw   = r.stake || r.Stake || r.score || r.Score || '—';
+    const stakeDisp  = stakeRaw !== '—' ? '$' + stakeRaw.toString().replace(/[^0-9]/g,'') : '—';
+    const result     = (r.result || r.Result || 'PENDING').toUpperCase();
     const pnlRaw     = r.pnl_units || r.PnL_Units || '';
+    const edgeRaw    = r.edge_a || r.edge || '';
+
+    // Edge display — stored as decimal in predictions, percentage in notes
+    let edgeDisp = '—';
+    if (edgeRaw && edgeRaw !== '') {
+      const ev = parseFloat(edgeRaw);
+      if (!isNaN(ev)) edgeDisp = (ev > 0 ? '+' : '') + (Math.abs(ev) < 1 ? (ev*100).toFixed(1) : ev.toFixed(1)) + '%';
+    }
 
     const pnl = pnlRaw ? parseFloat(pnlRaw) : calcPnL(r);
     const pnlStr = pnl === null ? '—'
@@ -2101,8 +2132,18 @@ function renderResults(results) {
       : pnl < 0 ? `<span class="r-pnl-neg">-$${Math.abs(pnl).toFixed(0)}</span>`
       : `<span class="r-pnl-neu">$0</span>`;
 
+    // Dropdown colour class
+    const selCls = result === 'WIN' ? 'sel-win' : result === 'LOSS' ? 'sel-loss' : result === 'PUSH' ? 'sel-push' : '';
+
+    // Format date nicely
+    let dateDisp = date;
+    try {
+      const d = new Date(date);
+      if (!isNaN(d)) dateDisp = d.toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short'});
+    } catch(e) {}
+
     return `<tr>
-      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${date}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted);white-space:nowrap">${dateDisp}</td>
       <td style="font-weight:500;font-size:12px">${matchup}</td>
       <td style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${tournament}</td>
       <td><span class="r-type ${typeCls[betType]||'r-ml'}">${typeLabel[betType]||betType||'—'}</span></td>
@@ -2110,18 +2151,75 @@ function renderResults(results) {
       <td><span class="r-conf ${confCls[conf]||'r-med'}">${conf}</span></td>
       <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${odds}</td>
       <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${line}</td>
-      <td style="font-family:var(--font-mono);font-size:11px">${stakeDisplay}</td>
-      <td><span class="r-result ${resCls[result]||'r-pend'}">${result}</span></td>
+      <td style="font-family:var(--font-mono);font-size:11px">${stakeDisp}</td>
       <td>${pnlStr}</td>
       <td>
-        ${result === 'PENDING' ? `
-          <button class="grade-btn grade-win"  onclick="gradeResult(${i}, 'WIN')">W</button>
-          <button class="grade-btn grade-loss" onclick="gradeResult(${i}, 'LOSS')">L</button>
-          <button class="grade-btn grade-push" onclick="gradeResult(${i}, 'PUSH')">P</button>
-        ` : `<span class="grade-saving" style="display:none" id="saving-${i}">saving...</span>`}
+        <select class="result-select ${selCls}" onchange="gradeResult(${globalIdx}, this.value, this)">
+          <option value="PENDING" ${result==='PENDING'?'selected':''}>Pending</option>
+          <option value="WIN"     ${result==='WIN'?'selected':''}>✓ Win</option>
+          <option value="LOSS"    ${result==='LOSS'?'selected':''}>✗ Loss</option>
+          <option value="PUSH"    ${result==='PUSH'?'selected':''}>↔ Push</option>
+        </select>
       </td>
     </tr>`;
-  }).join('');
+  }
+
+  // ── Split into Awaiting / Settled ─────────────────────────────────────────────
+  const allSorted = [...results].sort((a,b) => new Date(b.date||b.Date) - new Date(a.date||a.Date));
+  // Build global index map so gradeResult always references resultsCache correctly
+  const awaitingRows = [];
+  const settledRows  = [];
+  allSorted.forEach((r, sortedIdx) => {
+    const globalIdx = resultsCache.indexOf(r);
+    const result = (r.result || r.Result || 'PENDING').toUpperCase();
+    if (result === 'PENDING') awaitingRows.push({ r, globalIdx });
+    else settledRows.push({ r, globalIdx });
+  });
+
+  const tbody = document.getElementById('results-tbody');
+  const empty = document.getElementById('results-empty');
+  if (allSorted.length === 0) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  const thead = `<tr>
+    <th>Date</th><th>Matchup</th><th>Tournament</th><th>Type</th>
+    <th>Lean</th><th>Conf</th><th>Odds</th><th>Line</th>
+    <th>Stake</th><th>P&amp;L</th><th>Result</th>
+  </tr>`;
+
+  let html = '';
+
+  // Awaiting section
+  html += `<tr class="results-section-header-row">
+    <td colspan="11" style="padding:0">
+      <div class="results-section-header">
+        <span class="results-section-icon">⏳</span>
+        <span class="results-section-title" style="color:var(--warn)">Awaiting Result</span>
+        <span class="results-section-count">${awaitingRows.length}</span>
+      </div>
+    </td>
+  </tr>`;
+  if (awaitingRows.length === 0) {
+    html += `<tr><td colspan="11" style="padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--muted)">No pending picks</td></tr>`;
+  } else {
+    awaitingRows.forEach(({ r, globalIdx }) => { html += rowHtml(r, globalIdx); });
+  }
+
+  // Settled section
+  if (settledRows.length > 0) {
+    html += `<tr class="results-section-header-row">
+      <td colspan="11" style="padding:0">
+        <div class="results-section-header">
+          <span class="results-section-icon">✅</span>
+          <span class="results-section-title" style="color:#4ade80">Settled</span>
+          <span class="results-section-count">${settledRows.length}</span>
+        </div>
+      </td>
+    </tr>`;
+    settledRows.forEach(({ r, globalIdx }) => { html += rowHtml(r, globalIdx); });
+  }
+
+  tbody.innerHTML = html;
 }
 
 // Load Chart.js then results
